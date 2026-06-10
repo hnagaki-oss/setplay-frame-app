@@ -2,6 +2,7 @@ import { db } from './db';
 import type { Character, ControlType, ControlTypeId, Game, GameId, Move } from './types';
 import { INITIAL_CHARACTERS } from './constants';
 import { genUUID, now } from './utils';
+import { fetchSf6OfficialRoster } from './sf6OfficialSite';
 import {
   SF6_CHUNLI_CLASSIC_DATA_META,
   SF6_CHUNLI_CLASSIC_MOVES,
@@ -60,10 +61,19 @@ export function getOfficialImportTarget(
 }
 
 export async function ensureGameCharacterRoster(game: Game): Promise<number> {
-  let addedCount = 0;
+  if (game.id === 'sf6') {
+    const roster = await fetchSf6OfficialRoster();
+    return ensureGameCharacterNames(game, roster.characters.map((character) => character.name));
+  }
+
+  return ensureGameCharacterNames(game, []);
+}
+
+async function ensureGameCharacterNames(game: Game, officialNames: string[]): Promise<number> {
+  const addedNames = new Set<string>();
 
   for (const controlType of game.controlTypes) {
-    const canonicalNames = INITIAL_CHARACTERS[controlType.id] ?? [];
+    const canonicalNames = officialNames.length > 0 ? officialNames : INITIAL_CHARACTERS[controlType.id] ?? [];
     if (canonicalNames.length === 0) continue;
 
     const existing = await db.characters
@@ -86,11 +96,11 @@ export async function ensureGameCharacterRoster(game: Game): Promise<number> {
 
     if (characters.length > 0) {
       await db.characters.bulkAdd(characters);
-      addedCount += characters.length;
+      characters.forEach((character) => addedNames.add(character.name));
     }
   }
 
-  return addedCount;
+  return addedNames.size;
 }
 
 export async function ensureCharacterForControlType(
@@ -192,8 +202,13 @@ export async function importOfficialForCharacterControl(
 export async function importAvailableOfficialTargetsForGame(game: Game): Promise<{
   addedCharacters: number;
   imported: OfficialImportResult[];
+  rosterSource: 'official-site' | 'fallback' | 'preset';
+  rosterError?: string;
 }> {
-  const addedCharacters = await ensureGameCharacterRoster(game);
+  const roster = game.id === 'sf6' ? await fetchSf6OfficialRoster() : null;
+  const addedCharacters = roster
+    ? await ensureGameCharacterNames(game, roster.characters.map((character) => character.name))
+    : await ensureGameCharacterRoster(game);
   const gameTargets = OFFICIAL_IMPORT_TARGETS.filter((target) => target.meta.gameId === game.id);
   const imported: OfficialImportResult[] = [];
 
@@ -201,7 +216,12 @@ export async function importAvailableOfficialTargetsForGame(game: Game): Promise
     imported.push(await importOfficialTargetIfChanged(target));
   }
 
-  return { addedCharacters, imported };
+  return {
+    addedCharacters,
+    imported,
+    rosterSource: roster?.source ?? 'preset',
+    rosterError: roster?.error,
+  };
 }
 
 function hasOfficialMoveDiff(currentMoves: Move[], seedMoves: OfficialSeedMove[]): boolean {
