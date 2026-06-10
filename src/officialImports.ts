@@ -3,14 +3,6 @@ import type { Character, ControlType, ControlTypeId, Game, GameId, Move } from '
 import { INITIAL_CHARACTERS } from './constants';
 import { genUUID, now } from './utils';
 import { fetchSf6OfficialFrameData, fetchSf6OfficialRoster, type Sf6OfficialCharacter } from './sf6OfficialSite';
-import {
-  SF6_CHUNLI_CLASSIC_DATA_META,
-  SF6_CHUNLI_CLASSIC_MOVES,
-} from './sf6ChunliClassicMoves';
-import {
-  SF6_CHUNLI_MODERN_DATA_META,
-  SF6_CHUNLI_MODERN_MOVES,
-} from './sf6ChunliModernMoves';
 
 export type OfficialSeedMove = Omit<
   Move,
@@ -61,18 +53,7 @@ export type OfficialBulkImportPreview = {
   rosterError?: string;
 };
 
-export const OFFICIAL_IMPORT_TARGETS: OfficialImportTarget[] = [
-  {
-    label: '春麗クラシック',
-    meta: SF6_CHUNLI_CLASSIC_DATA_META,
-    moves: SF6_CHUNLI_CLASSIC_MOVES,
-  },
-  {
-    label: '春麗モダン',
-    meta: SF6_CHUNLI_MODERN_DATA_META,
-    moves: SF6_CHUNLI_MODERN_MOVES,
-  },
-];
+export const OFFICIAL_IMPORT_TARGETS: OfficialImportTarget[] = [];
 
 export function getOfficialImportTarget(
   gameId: GameId,

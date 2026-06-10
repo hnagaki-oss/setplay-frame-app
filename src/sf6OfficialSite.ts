@@ -268,7 +268,7 @@ function mergeSf6OfficialCommands(
       if (controlTypeId === 'sf6_modern' && command.modernCommand === null) return null;
 
       const baseCommandText = controlTypeId === 'sf6_modern' ? command.modernCommand : command.classicCommand;
-      const commandText = applyMoveStageToCommand(move.name, applyMoveVariantToCommand(move.name, baseCommandText ?? ''));
+      const commandText = refineOfficialMoveCommand(move.name, baseCommandText ?? '');
       if (!commandText) return move;
       return {
         ...move,
@@ -295,7 +295,15 @@ function normalizeMoveNameForCommandLookup(moveName: string): string {
     .replace(/^(?:OD\s+)?(?:弱|中|強)\s+/, '')
     .replace(/^OD\s+/, '')
     .replace(/（[12]段目）$/, '')
+    .replace(/[（(](?:後方|上方|前方)[）)]$/, '')
     .trim();
+}
+
+function refineOfficialMoveCommand(moveName: string, command: string): string {
+  return applyDirectionalVariantToCommand(
+    moveName,
+    applyMoveStageToCommand(moveName, applyMoveVariantToCommand(moveName, command))
+  );
 }
 
 function applyMoveVariantToCommand(moveName: string, command: string): string {
@@ -329,6 +337,15 @@ function applyMoveVariantToCommand(moveName: string, command: string): string {
   resolved = select(resolved, '弱P | 中P | 強P', '中P', '強P', '弱中', '弱強', '中強');
   resolved = select(resolved, '弱K | 中K | 強K', '中K', '強K', '弱中', '弱強', '中強');
   return resolved;
+}
+
+function applyDirectionalVariantToCommand(moveName: string, command: string): string {
+  const direction = moveName.includes('後方') ? '4' : moveName.includes('上方') ? '2' : moveName.includes('前方') ? '6' : '';
+  if (!direction || !command.includes(' or ')) return command;
+
+  const directionPattern = /(?:4|2|6)(?:\s+or\s+(?:4|2|6))*\s*\+\s*/;
+  const resolved = command.replace(directionPattern, `${direction} + `);
+  return resolved.replace(/\s+(弱K\s*\|\s*中K\s*\|\s*強K|弱P\s*\|\s*中P\s*\|\s*強P)$/, '').trim();
 }
 
 function applyMoveStageToCommand(moveName: string, command: string): string {
