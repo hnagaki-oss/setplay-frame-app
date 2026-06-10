@@ -9,6 +9,7 @@ export interface OfficialFrameMoveSource {
   activeDetailText?: string;
   note?: string;
   inputText?: string;
+  commandText?: string;
 }
 
 export interface ParsedFinalActiveRange {
@@ -67,7 +68,7 @@ export function parseOfficialFrameMove(move: OfficialFrameMoveSource): ParsedOff
   const totalFrames = calculatedTotalFrames ?? notedTotalFrames;
 
   return {
-    name: move.name,
+    name: buildOfficialMoveName(move, category),
     category,
     startupFrames,
     activeStartFrames: finalActive.activeStartFrames,
@@ -135,11 +136,16 @@ function parseTotalFramesFromText(text: string): number | null {
 }
 
 function buildOfficialFrameMemo(move: OfficialFrameMoveSource): string {
-  const parts = [
-    `公式カテゴリ: ${move.officialCategory}`,
+  const parts = [`公式カテゴリ: ${move.officialCategory}`];
+
+  if (move.commandText?.trim()) {
+    parts.push(`公式コマンド: ${move.commandText.trim()}`);
+  }
+
+  parts.push(
     `公式発生: ${move.startupText || '-'}`,
-    `公式持続: ${move.activeText || '-'}`,
-  ];
+    `公式持続: ${move.activeText || '-'}`
+  );
 
   if (move.activeDetailText?.trim()) {
     parts.push(`持続詳細: ${move.activeDetailText.trim()}`);
@@ -156,6 +162,14 @@ function buildOfficialFrameMemo(move: OfficialFrameMoveSource): string {
   }
 
   return parts.join('\n');
+}
+
+function buildOfficialMoveName(move: OfficialFrameMoveSource, category: MoveCategory): string {
+  const commandText = move.commandText?.trim();
+  if (category !== 'normal' && commandText) {
+    return `${commandText}（${move.name}）`;
+  }
+  return move.name;
 }
 
 function extractFrameRelatedNotes(note: string): string[] {
