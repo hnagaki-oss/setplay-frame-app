@@ -29,10 +29,11 @@ When changing the IndexedDB schema, update both:
 - Do not import jump attacks or air-only special moves into the frame-kill move list.
 - Map official `スーパーアーツ` rows to the app category `超必殺技`.
 - Compute `totalFrames` from official startup, active, and recovery values: `startup + activeDuration + recovery - 1`.
+- If the numeric columns cannot produce `totalFrames`, fall back to explicit note text such as `全体50F`.
 - Use the visible active range for total-frame calculation. For example, `8-16` has an active duration of 9F.
 - For multi-hit active detail data such as `8-10, 14-16`, store only the final active segment: `activeStartFrames = 14`, `activeFrames = 16`.
 - Prefer the official active-detail annotation over the visible active range when filling `activeStartFrames` and `activeFrames`.
-- Import official notes into `memo`; the move list surfaces the `備考:` line so it can be checked without opening the detail modal.
+- Import official notes into `memo`; frame-related note fragments are also surfaced as `フレーム補足:` so they can be checked without opening the detail modal.
 
 ## Release Checklist
 

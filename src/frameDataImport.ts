@@ -57,10 +57,12 @@ export function parseOfficialFrameMove(move: OfficialFrameMoveSource): ParsedOff
   const surfaceActive = parseFirstActiveRange(move.activeText);
   const finalActive = parseFinalActiveRange(move.activeDetailText?.trim() ? move.activeDetailText : move.activeText);
   const recoveryFrames = parseStrictInteger(move.recoveryText);
-  const totalFrames =
+  const calculatedTotalFrames =
     startupFrames !== null && surfaceActive.activeStartFrames !== null && surfaceActive.activeFrames !== null && recoveryFrames !== null
       ? startupFrames + (surfaceActive.activeFrames - surfaceActive.activeStartFrames + 1) + recoveryFrames - 1
       : null;
+  const notedTotalFrames = parseTotalFramesFromText(move.note ?? '');
+  const totalFrames = calculatedTotalFrames ?? notedTotalFrames;
 
   return {
     name: move.name,
@@ -121,6 +123,11 @@ function parseStrictInteger(text: string): number | null {
   return /^-?\d+$/.test(trimmed) ? Number(trimmed) : null;
 }
 
+function parseTotalFramesFromText(text: string): number | null {
+  const match = text.match(/全体\s*(\d+)\s*F?/i);
+  return match ? Number(match[1]) : null;
+}
+
 function buildOfficialFrameMemo(move: OfficialFrameMoveSource): string {
   const parts = [
     `公式カテゴリ: ${move.officialCategory}`,
@@ -135,8 +142,19 @@ function buildOfficialFrameMemo(move: OfficialFrameMoveSource): string {
   parts.push(`硬直: ${move.recoveryText || '-'}`);
 
   if (move.note?.trim()) {
+    const frameNotes = extractFrameRelatedNotes(move.note);
+    if (frameNotes.length > 0) {
+      parts.push(`フレーム補足: ${frameNotes.join(' / ')}`);
+    }
     parts.push(`備考: ${move.note.trim()}`);
   }
 
   return parts.join('\n');
+}
+
+function extractFrameRelatedNotes(note: string): string[] {
+  return note
+    .split(/\n|。|(?<=F)\s+/)
+    .map((part) => part.trim())
+    .filter((part) => /全体|発生|持続|硬直|フレーム|\d+\s*F/i.test(part));
 }

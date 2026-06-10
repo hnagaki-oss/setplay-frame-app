@@ -144,10 +144,12 @@ function MoveRow({
 function getMoveMemoPreview(memo: string): string {
   const trimmed = memo.trim();
   if (!trimmed) return '';
-  const noteLine = trimmed
-    .split('\n')
+  const lines = trimmed.split('\n');
+  const frameNoteLine = lines
+    .find((line) => line.trim().startsWith('フレーム補足:'));
+  const noteLine = lines
     .find((line) => line.trim().startsWith('備考:'));
-  return (noteLine ?? trimmed.split('\n')[0]).trim();
+  return (frameNoteLine ?? noteLine ?? lines[0]).trim();
 }
 
 // ---- メインコンポーネント ----
