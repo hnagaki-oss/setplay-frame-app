@@ -61,7 +61,7 @@ export function parseOfficialFrameMove(move: OfficialFrameMoveSource): ParsedOff
     startupFrames !== null && surfaceActive.activeStartFrames !== null && surfaceActive.activeFrames !== null && recoveryFrames !== null
       ? startupFrames + (surfaceActive.activeFrames - surfaceActive.activeStartFrames + 1) + recoveryFrames - 1
       : null;
-  const notedTotalFrames = parseTotalFramesFromText(move.note ?? '');
+  const notedTotalFrames = parseTotalFramesFromText(`${move.recoveryText} ${move.note ?? ''}`);
   const totalFrames = calculatedTotalFrames ?? notedTotalFrames;
 
   return {
@@ -77,9 +77,9 @@ export function parseOfficialFrameMove(move: OfficialFrameMoveSource): ParsedOff
 }
 
 export function parseFinalActiveRange(activeText: string): ParsedFinalActiveRange {
-  const ranges = extractFrameRanges(activeText);
-  if (ranges.length > 0) {
-    const last = ranges[ranges.length - 1];
+  const segments = extractFrameSegments(activeText);
+  if (segments.length > 0) {
+    const last = segments[segments.length - 1];
     return {
       activeStartFrames: last.start,
       activeFrames: last.end,
@@ -95,9 +95,9 @@ export function parseFinalActiveRange(activeText: string): ParsedFinalActiveRang
 }
 
 export function parseFirstActiveRange(activeText: string): ParsedFinalActiveRange {
-  const ranges = extractFrameRanges(activeText);
-  if (ranges.length > 0) {
-    const first = ranges[0];
+  const segments = extractFrameSegments(activeText);
+  if (segments.length > 0) {
+    const first = segments[0];
     return {
       activeStartFrames: first.start,
       activeFrames: first.end,
@@ -106,11 +106,15 @@ export function parseFirstActiveRange(activeText: string): ParsedFinalActiveRang
   return parseFinalActiveRange(activeText);
 }
 
-function extractFrameRanges(text: string): Array<{ start: number; end: number }> {
-  return [...text.matchAll(/(-?\d+)\s*-\s*(-?\d+)/g)].map((match) => ({
-    start: Number(match[1]),
-    end: Number(match[2]),
-  }));
+function extractFrameSegments(text: string): Array<{ start: number; end: number }> {
+  const withoutFootnoteMarkers = text.replace(/\[\s*※\d+\s*\]|※\d+/g, '');
+  return [...withoutFootnoteMarkers.matchAll(/(-?\d+)\s*-\s*(-?\d+)|(-?\d+)/g)].map((match) => {
+    if (match[1] !== undefined && match[2] !== undefined) {
+      return { start: Number(match[1]), end: Number(match[2]) };
+    }
+    const frame = Number(match[3]);
+    return { start: frame, end: frame };
+  });
 }
 
 function parseFirstNumber(text: string): number | null {
