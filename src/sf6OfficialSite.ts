@@ -31,12 +31,14 @@ type Sf6OfficialMoveCommand = {
   name: string;
   classicCommand: string;
   modernCommand: string | null;
+  modernManualCommand: string | null;
 };
 
 type Sf6OfficialMovelistEntry = {
   skill: string | null;
   command: string | null;
   command_modern: string | null;
+  command_modern_manual: string | null;
 };
 
 const SF6_OFFICIAL_PROXY_BASE = '/official-site';
@@ -208,6 +210,7 @@ export function parseSf6OfficialMoveCommandMap(
       name,
       classicCommand: normalizeOfficialCommandNotation(entry.command ?? ''),
       modernCommand: entry.command_modern === null ? null : normalizeOfficialCommandNotation(entry.command_modern),
+      modernManualCommand: entry.command_modern_manual === null ? null : normalizeOfficialCommandNotation(entry.command_modern_manual),
     });
   }
 
@@ -265,9 +268,11 @@ function mergeSf6OfficialCommands(
     .map((move) => {
       const command = findMoveCommand(move.name, commandMap);
       if (!command) return move;
-      if (controlTypeId === 'sf6_modern' && command.modernCommand === null) return null;
 
-      const baseCommandText = controlTypeId === 'sf6_modern' ? command.modernCommand : command.classicCommand;
+      const baseCommandText = controlTypeId === 'sf6_modern'
+        ? command.modernCommand ?? command.modernManualCommand
+        : command.classicCommand;
+      if (!baseCommandText) return null;
       const commandText = refineOfficialMoveCommand(move.name, baseCommandText ?? '');
       if (!commandText) return move;
       return {
@@ -292,6 +297,7 @@ function findMoveCommand(
 
 function normalizeMoveNameForCommandLookup(moveName: string): string {
   return moveName
+    .replace(/^\[[^\]]+\]/, '')
     .replace(/^(?:OD\s+)?(?:弱|中|強)\s+/, '')
     .replace(/^OD\s+/, '')
     .replace(/（[12]段目）$/, '')
@@ -343,9 +349,12 @@ function applyDirectionalVariantToCommand(moveName: string, command: string): st
   const direction = moveName.includes('後方') ? '4' : moveName.includes('上方') ? '2' : moveName.includes('前方') ? '6' : '';
   if (!direction || !command.includes(' or ')) return command;
 
-  const directionPattern = /(?:4|2|6)(?:\s+or\s+(?:4|2|6))*\s*\+\s*/;
+  const directionPattern = /(?:4|2|6)(?:\s+or\s+(?:4|2|6))*\s+or\s+\+\s*|(?:4|2|6)(?:\s+or\s+(?:4|2|6))*\s*\+\s*/;
   const resolved = command.replace(directionPattern, `${direction} + `);
-  return resolved.replace(/\s+(弱K\s*\|\s*中K\s*\|\s*強K|弱P\s*\|\s*中P\s*\|\s*強P)$/, '').trim();
+  return resolved
+    .replace(/\s+(弱K\s*\|\s*中K\s*\|\s*強K|弱P\s*\|\s*中P\s*\|\s*強P)$/, '')
+    .replace(/(\+\s*攻撃)(?:\s+攻撃)+$/, '$1')
+    .trim();
 }
 
 function applyMoveStageToCommand(moveName: string, command: string): string {
@@ -432,7 +441,7 @@ function normalizeOfficialCommandNotation(command: string | null): string {
     .replace(/\bLK\b/g, '弱K')
     .replace(/\bMK\b/g, '中K')
     .replace(/\bHK\b/g, '強K')
-    .replace(/\bM攻\b/g, '攻撃')
+    .replace(/M攻/g, '攻撃')
     .replace(/\bM(?=[弱中強])/g, '')
     .replace(/\b[a-z]+T\d+\b/g, '')
     .replace(/\s+/g, ' ')
