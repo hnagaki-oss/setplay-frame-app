@@ -33,6 +33,7 @@ const OFFICIAL_CATEGORY_MAP: Record<string, MoveCategory> = {
   特殊技: 'commandNormal',
   必殺技: 'special',
   スーパーアーツ: 'super',
+  超必殺技: 'super',
   共通システム: 'common',
   通常投げ: 'common',
 };
