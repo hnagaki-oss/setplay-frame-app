@@ -19,6 +19,7 @@ import {
   ensureCharacterForControlType,
   importAvailableOfficialTargetsForGame,
   importOfficialForCharacterControl,
+  previewOfficialForCharacterControl,
 } from './officialImports';
 
 type AppView = 'gameSelect' | 'controlTypeSelect' | 'characterSelect' | 'main';
@@ -154,6 +155,28 @@ export default function App() {
   const handleSingleOfficialImport = async (ct: ControlType) => {
     if (!selectedGame || !selectedCharacterName) return;
     await ensureCharacterForControlType(selectedGame, ct, selectedCharacterName);
+    const preview = await previewOfficialForCharacterControl(selectedGame.id, ct.id, selectedCharacterName);
+    if (preview.status === 'unavailable') {
+      showToast(`「${selectedCharacterName} / ${ct.name}」の公式データはまだ未対応です`, 'info');
+      return;
+    }
+    if (preview.status === 'unchanged') {
+      showToast(`${preview.label}公式データに差分はありません（${preview.officialCount}件）`, 'info');
+      return;
+    }
+    const shouldImport = window.confirm(
+      [
+        `${preview.label} の公式データ差分をインポートしますか？`,
+        `現在: ${preview.currentCount}件`,
+        `公式: ${preview.officialCount}件`,
+        `データ最終確認日: ${preview.dataCheckedAt ?? '-'}`,
+      ].join('\n')
+    );
+    if (!shouldImport) {
+      showToast(`${preview.label}公式データのインポートをキャンセルしました`, 'info');
+      return;
+    }
+
     const result = await importOfficialForCharacterControl(selectedGame.id, ct.id, selectedCharacterName);
     if (result.status === 'unavailable') {
       showToast(`「${selectedCharacterName} / ${ct.name}」の公式データはまだ未対応です`, 'info');

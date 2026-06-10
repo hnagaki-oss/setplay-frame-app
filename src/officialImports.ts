@@ -2,7 +2,7 @@ import { db } from './db';
 import type { Character, ControlType, ControlTypeId, Game, GameId, Move } from './types';
 import { INITIAL_CHARACTERS } from './constants';
 import { genUUID, now } from './utils';
-import { fetchSf6OfficialRoster } from './sf6OfficialSite';
+import { fetchSf6OfficialFrameData, fetchSf6OfficialRoster, type Sf6OfficialCharacter } from './sf6OfficialSite';
 import {
   SF6_CHUNLI_CLASSIC_DATA_META,
   SF6_CHUNLI_CLASSIC_MOVES,
@@ -24,6 +24,7 @@ export type OfficialImportTarget = {
     controlTypeId: ControlTypeId;
     characterName: string;
     sourceName: string;
+    sourceUrl?: string;
     dataCheckedAt: string;
   };
   moves: OfficialSeedMove[];
@@ -33,6 +34,16 @@ export type OfficialImportResult = {
   status: 'imported' | 'unchanged' | 'unavailable';
   importedCount: number;
   label: string;
+};
+
+export type OfficialImportPreview = {
+  status: 'changed' | 'unchanged' | 'unavailable';
+  label: string;
+  currentCount: number;
+  officialCount: number;
+  sourceName?: string;
+  sourceUrl?: string;
+  dataCheckedAt?: string;
 };
 
 export const OFFICIAL_IMPORT_TARGETS: OfficialImportTarget[] = [
@@ -192,11 +203,46 @@ export async function importOfficialForCharacterControl(
   controlTypeId: ControlTypeId,
   characterName: string
 ): Promise<OfficialImportResult> {
-  const target = getOfficialImportTarget(gameId, controlTypeId, characterName);
+  const target = await resolveOfficialImportTarget(gameId, controlTypeId, characterName);
   if (!target) {
     return { status: 'unavailable', importedCount: 0, label: characterName };
   }
   return importOfficialTargetIfChanged(target);
+}
+
+export async function previewOfficialForCharacterControl(
+  gameId: GameId,
+  controlTypeId: ControlTypeId,
+  characterName: string
+): Promise<OfficialImportPreview> {
+  const target = await resolveOfficialImportTarget(gameId, controlTypeId, characterName);
+  if (!target) {
+    return {
+      status: 'unavailable',
+      label: characterName,
+      currentCount: 0,
+      officialCount: 0,
+    };
+  }
+
+  const existingCharacters = await db.characters
+    .where('[gameId+controlTypeId]')
+    .equals([target.meta.gameId, target.meta.controlTypeId])
+    .toArray();
+  const character = existingCharacters.find((candidate) => candidate.name === target.meta.characterName);
+  const currentMoves = character ? await db.moves.where('characterId').equals(character.id).toArray() : [];
+  currentMoves.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name, 'ja'));
+  const changed = hasOfficialMoveDiff(currentMoves, target.moves);
+
+  return {
+    status: changed ? 'changed' : 'unchanged',
+    label: target.label,
+    currentCount: currentMoves.length,
+    officialCount: target.moves.length,
+    sourceName: target.meta.sourceName,
+    sourceUrl: 'sourceUrl' in target.meta ? target.meta.sourceUrl : undefined,
+    dataCheckedAt: target.meta.dataCheckedAt,
+  };
 }
 
 export async function importAvailableOfficialTargetsForGame(game: Game): Promise<{
@@ -240,4 +286,42 @@ function hasOfficialMoveDiff(currentMoves: Move[], seedMoves: OfficialSeedMove[]
       !currentMove.memo.includes(seedMove.memo)
     );
   });
+}
+
+async function resolveOfficialImportTarget(
+  gameId: GameId,
+  controlTypeId: ControlTypeId,
+  characterName: string
+): Promise<OfficialImportTarget | null> {
+  const staticTarget = getOfficialImportTarget(gameId, controlTypeId, characterName);
+  if (staticTarget) return staticTarget;
+
+  if (gameId !== 'sf6' || (controlTypeId !== 'sf6_classic' && controlTypeId !== 'sf6_modern')) {
+    return null;
+  }
+
+  const roster = await fetchSf6OfficialRoster();
+  const officialCharacter = findOfficialCharacterByName(roster.characters, characterName);
+  if (!officialCharacter) return null;
+
+  const frameData = await fetchSf6OfficialFrameData(officialCharacter, controlTypeId);
+  return {
+    label: `${characterName} ${controlTypeId === 'sf6_modern' ? 'モダン' : 'クラシック'}`,
+    meta: {
+      gameId,
+      controlTypeId,
+      characterName,
+      sourceName: `STREET FIGHTER 6 公式 ${characterName} フレームデータ`,
+      dataCheckedAt: frameData.dataCheckedAt,
+      sourceUrl: frameData.sourceUrl,
+    },
+    moves: frameData.moves,
+  };
+}
+
+function findOfficialCharacterByName(
+  characters: Sf6OfficialCharacter[],
+  characterName: string
+): Sf6OfficialCharacter | null {
+  return characters.find((character) => character.name === characterName) ?? null;
 }
