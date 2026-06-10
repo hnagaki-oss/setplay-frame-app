@@ -268,7 +268,7 @@ function mergeSf6OfficialCommands(
       if (controlTypeId === 'sf6_modern' && command.modernCommand === null) return null;
 
       const baseCommandText = controlTypeId === 'sf6_modern' ? command.modernCommand : command.classicCommand;
-      const commandText = applyMoveVariantToCommand(move.name, baseCommandText ?? '');
+      const commandText = applyMoveStageToCommand(move.name, applyMoveVariantToCommand(move.name, baseCommandText ?? ''));
       if (!commandText) return move;
       return {
         ...move,
@@ -286,18 +286,58 @@ function findMoveCommand(
   const exact = commandMap.get(moveName);
   if (exact) return exact;
 
-  const baseName = moveName.replace(/^(弱|中|強|OD)\s+/, '');
+  const baseName = normalizeMoveNameForCommandLookup(moveName);
   return commandMap.get(baseName);
 }
 
-function applyMoveVariantToCommand(moveName: string, command: string): string {
-  const variant = moveName.match(/^(弱|中|強|OD)\s+/)?.[1];
-  if (!variant) return command;
+function normalizeMoveNameForCommandLookup(moveName: string): string {
+  return moveName
+    .replace(/^(?:OD\s+)?(?:弱|中|強)\s+/, '')
+    .replace(/^OD\s+/, '')
+    .replace(/（[12]段目）$/, '')
+    .trim();
+}
 
-  if (variant === '弱') return command.replace('弱P/中P/強P', '弱P').replace('弱K/中K/強K', '弱K');
-  if (variant === '中') return command.replace('弱P/中P/強P', '中P').replace('弱K/中K/強K', '中K');
-  if (variant === '強') return command.replace('弱P/中P/強P', '強P').replace('弱K/中K/強K', '強K');
-  if (variant === 'OD') return command.replace('弱P/中P/強P', 'PP').replace('弱K/中K/強K', 'KK');
+function applyMoveVariantToCommand(moveName: string, command: string): string {
+  const match = moveName.match(/^(OD\s+)?(弱|中|強)?\s*/);
+  const isOd = Boolean(match?.[1]);
+  const strength = match?.[2] ?? null;
+  if (!isOd && !strength) return command;
+
+  const select = (
+    text: string,
+    light: string,
+    medium: string,
+    heavy: string,
+    odLight: string,
+    odMedium: string,
+    odHeavy: string
+  ) => {
+    if (isOd && strength === '弱') return text.replace(light, odLight);
+    if (isOd && strength === '中') return text.replace(light, odMedium);
+    if (isOd && strength === '強') return text.replace(light, odHeavy);
+    if (isOd) return text.replace(light, odLight);
+    if (strength === '弱') return text.replace(light, light.split(/\s*(?:\/|\|)\s*/)[0]);
+    if (strength === '中') return text.replace(light, medium);
+    if (strength === '強') return text.replace(light, heavy);
+    return text;
+  };
+
+  let resolved = command;
+  resolved = select(resolved, '弱P/中P/強P', '中P', '強P', '弱P+中P', '弱P+強P', '中P+強P');
+  resolved = select(resolved, '弱K/中K/強K', '中K', '強K', '弱K+中K', '弱K+強K', '中K+強K');
+  resolved = select(resolved, '弱P | 中P | 強P', '中P', '強P', '弱P+中P', '弱P+強P', '中P+強P');
+  resolved = select(resolved, '弱K | 中K | 強K', '中K', '強K', '弱K+中K', '弱K+強K', '中K+強K');
+  return resolved;
+}
+
+function applyMoveStageToCommand(moveName: string, command: string): string {
+  const stageMatch = moveName.match(/（(\d+)段目）$/);
+  if (!stageMatch || !command.includes('>')) return command;
+
+  const stage = Number(stageMatch[1]);
+  const parts = command.split('>').map((part) => part.trim()).filter(Boolean);
+  if (stage <= 1) return parts[0] ?? command;
   return command;
 }
 
