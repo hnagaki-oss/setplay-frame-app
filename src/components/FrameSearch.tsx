@@ -91,12 +91,16 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
   const tgtF = targetF === '' ? null : Number(targetF);
 
   const meatyMove = moves.find((m) => m.id === meatyMoveId);
+  const meatyActiveStart = meatyMove?.activeStartFrames ?? meatyMove?.startupFrames ?? null;
 
   const computeRequired = (): { value: number | null; error: string | null } => {
     if (curF === null || tgtF === null) return { value: null, error: null };
-    if (isMeaty && meatyMove?.startupFrames && meatyMove?.activeFrames) {
+    if (isMeaty && meatyMove?.startupFrames && meatyActiveStart && meatyMove.activeFrames) {
+      if (meatyMove.activeFrames < meatyActiveStart) {
+        return { value: null, error: '重ね技の最終持続Fが発生Fより小さくなっています。技データを確認してください。' };
+      }
       const activeIdx = meatyActiveIdx;
-      const reach = meatyMove.startupFrames + activeIdx;
+      const reach = meatyActiveStart + activeIdx;
       const req = curF - reach;
       return req < 0
         ? { value: null, error: '目標Fが現在の有利Fを上回っています。' }
@@ -183,10 +187,12 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
   );
 
   const meatyActiveOptions = (() => {
-    if (!meatyMove?.startupFrames || !meatyMove?.activeFrames) return [];
-    return Array.from({ length: meatyMove.activeFrames }, (_, i) => ({
+    if (!meatyMove?.startupFrames || !meatyActiveStart || !meatyMove.activeFrames) return [];
+    const activeCount = meatyMove.activeFrames - meatyActiveStart + 1;
+    if (activeCount <= 0) return [];
+    return Array.from({ length: activeCount }, (_, i) => ({
       idx: i,
-      label: `持続${i + 1}F目（発生+${i}F = ${meatyMove.startupFrames! + i}F）`,
+      label: `最終段 持続${i + 1}F目（${meatyActiveStart + i}F目）`,
     }));
   })();
 
@@ -294,9 +300,17 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
                 >
                   <option value="">-- 選択してください --</option>
                   {moves.map((m) => (
-                    <option key={m.id} value={m.id} disabled={!m.startupFrames || !m.activeFrames}>
+                    <option
+                      key={m.id}
+                      value={m.id}
+                      disabled={!m.startupFrames || !m.activeFrames || m.activeFrames < (m.activeStartFrames ?? m.startupFrames)}
+                    >
                       {m.name}
-                      {(!m.startupFrames || !m.activeFrames) ? '（発生F/持続F未入力）' : ` (発生${m.startupFrames}F 持続${m.activeFrames}F)`}
+                      {(!m.startupFrames || !m.activeFrames)
+                        ? '（発生F/最終持続F未入力）'
+                        : m.activeFrames < (m.activeStartFrames ?? m.startupFrames)
+                        ? '（最終持続Fが発生F未満）'
+                        : ` (発生${m.startupFrames}F 最終段${m.activeStartFrames ?? m.startupFrames}-${m.activeFrames}F)`}
                     </option>
                   ))}
                 </select>
@@ -318,12 +332,12 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
                   </label>
                   {requiredF !== null && (
                     <p className="meaty-calc">
-                      必要消費F：{curF} − ({meatyMove.startupFrames} + {meatyActiveIdx}) = <strong>{requiredF}F</strong>
+                      必要消費F：{curF} − ({meatyActiveStart} + {meatyActiveIdx}) = <strong>{requiredF}F</strong>
                     </p>
                   )}
                 </>
               ) : meatyMoveId ? (
-                <p className="error-message">この技は発生Fまたは持続Fが未入力です。重ね検索を行うには技データに発生F・持続Fを入力してください。</p>
+                <p className="error-message">この技は発生Fまたは最終持続Fが未入力です。重ね検索を行うには技データに発生F・最終持続Fを入力してください。</p>
               ) : null}
             </div>
           )}

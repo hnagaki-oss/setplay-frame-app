@@ -103,13 +103,14 @@ export const INITIAL_TAGS = [
 ];
 
 export const ALL_MOVE_CATEGORIES: MoveCategory[] = [
-  'normal', 'commandNormal', 'special', 'common',
+  'normal', 'commandNormal', 'special', 'super', 'common',
 ];
 
 export const MOVE_CATEGORY_NAMES: Record<MoveCategory, string> = {
   normal: '通常技',
   commandNormal: '特殊技',
   special: '必殺技',
+  super: '超必殺技',
   common: '共通技',
 };
 
@@ -132,7 +133,7 @@ export const DEFAULT_SEARCH_DEFAULTS: SearchDefaults = {
   allowRepeatSameMove: true,
   allowWaitFrames: false,
   maxWaitFrames: 5,
-  enabledCategories: ['normal', 'commandNormal', 'special', 'common'],
+  enabledCategories: ['normal', 'commandNormal', 'special', 'super', 'common'],
 };
 
 export const INITIAL_PRESETS: Record<string, { moves: PresetMove[]; searchDefaults: SearchDefaults }> = {

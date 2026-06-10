@@ -104,6 +104,7 @@ async function seedMovesForAllCharacters(game: Game, controlType: ControlType) {
       entryType: 'preset' as const,
       totalFrames: null,
       startupFrames: null,
+      activeStartFrames: null,
       activeFrames: null,
       tags: [],
       memo: '',

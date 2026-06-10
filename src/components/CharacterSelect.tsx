@@ -168,6 +168,7 @@ export function CharacterSelect({ game, controlType, onSelect, showToast }: Prop
         entryType: 'preset' as const,
         totalFrames: null,
         startupFrames: null,
+        activeStartFrames: null,
         activeFrames: null,
         tags: [],
         memo: '',

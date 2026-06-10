@@ -162,7 +162,8 @@ export function search(
   if (condition.isMeatyMode && condition.meatyMoveId) {
     const meatyMove = moves.find((m) => m.id === condition.meatyMoveId);
     if (meatyMove?.startupFrames && meatyMove?.activeFrames) {
-      const activeIdx = condition.meatyTargetActiveIndex ?? meatyMove.activeFrames - 1;
+      const activeStart = meatyMove.activeStartFrames ?? meatyMove.startupFrames;
+      const activeIdx = condition.meatyTargetActiveIndex ?? meatyMove.activeFrames - activeStart;
       meatyInfo = {
         moveId: meatyMove.id,
         moveName: meatyMove.name,

@@ -507,7 +507,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 /* テーブルヘッダー */
 .move-table-header {
   display: grid;
-  grid-template-columns: 1fr 72px 72px 90px auto;
+  grid-template-columns: 1fr 72px 92px 82px 90px auto;
   align-items: center;
   padding: 0.35rem 1rem;
   background: var(--bg);
@@ -526,7 +526,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 /* 技行（インライン編集） */
 .move-row {
   display: grid;
-  grid-template-columns: 1fr 72px 72px 90px auto;
+  grid-template-columns: 1fr 72px 92px 82px 90px auto;
   align-items: center;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
@@ -589,8 +589,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 .btn-add-move:hover { background: var(--primary-light); }
 
 @media (max-width: 600px) {
-  .move-table-header { grid-template-columns: 1fr 60px 60px 70px auto; padding: 0.35rem 0.5rem; }
-  .move-row { grid-template-columns: 1fr 60px 60px 70px auto; padding: 0.5rem 0.5rem; }
+  .move-table-header { grid-template-columns: 1fr 54px 72px 64px 70px auto; padding: 0.35rem 0.5rem; }
+  .move-row { grid-template-columns: 1fr 54px 72px 64px 70px auto; padding: 0.5rem 0.5rem; }
   .move-row-actions { gap: 0.2rem; }
 }
 
@@ -713,6 +713,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 .cat-normal { color: #1e293b; }
 .cat-commandNormal { color: #0891b2; }
 .cat-special { color: #7c3aed; }
+.cat-super { color: #dc2626; }
 .cat-common { color: #059669; }
 
 .register-bar {

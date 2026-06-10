@@ -74,7 +74,7 @@ function MoveRow({
   onDeleteRequest,
 }: {
   move: Move;
-  onFrameUpdate: (id: string, patch: Partial<Pick<Move, 'startupFrames' | 'activeFrames' | 'totalFrames'>>) => void;
+  onFrameUpdate: (id: string, patch: Partial<Pick<Move, 'startupFrames' | 'activeStartFrames' | 'activeFrames' | 'totalFrames'>>) => void;
   onToggleEnabled: (move: Move) => void;
   onOpenDetail: (move: Move) => void;
   onDeleteRequest: (id: string) => void;
@@ -102,6 +102,11 @@ function MoveRow({
         value={move.activeFrames}
         placeholder="--"
         onCommit={(v) => onFrameUpdate(move.id, { activeFrames: v })}
+      />
+      <FrameInput
+        value={move.activeStartFrames ?? null}
+        placeholder="発生F"
+        onCommit={(v) => onFrameUpdate(move.id, { activeStartFrames: v })}
       />
       <FrameInput
         value={move.totalFrames}
@@ -175,7 +180,7 @@ export function MoveManager({ character, showToast }: Props) {
   // フレーム値のインライン更新（blur時に呼ばれる）
   const handleFrameUpdate = useCallback(async (
     id: string,
-    patch: Partial<Pick<Move, 'startupFrames' | 'activeFrames' | 'totalFrames'>>
+    patch: Partial<Pick<Move, 'startupFrames' | 'activeStartFrames' | 'activeFrames' | 'totalFrames'>>
   ) => {
     await db.moves.update(id, { ...patch, updatedAt: now() });
     setMoves((prev) => prev.map((m) => m.id === id ? { ...m, ...patch } : m));
@@ -237,6 +242,7 @@ export function MoveManager({ character, showToast }: Props) {
         entryType: 'added',
         totalFrames: null,
         startupFrames: null,
+        activeStartFrames: null,
         activeFrames: null,
         createdAt: now(),
         updatedAt: now(),
@@ -341,7 +347,8 @@ export function MoveManager({ character, showToast }: Props) {
                   <div className="move-table-header">
                     <span className="col-name">技名</span>
                     <span className="col-frame">発生F</span>
-                    <span className="col-frame">持続F</span>
+                    <span className="col-frame">最終段開始F</span>
+                    <span className="col-frame">最終持続F</span>
                     <span className="col-frame col-frame-total">全体F <span className="col-frame-note">（検索用）</span></span>
                     <span className="col-actions"></span>
                   </div>

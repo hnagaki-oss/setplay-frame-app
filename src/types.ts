@@ -6,7 +6,7 @@ export type ControlTypeId =
   | 'cotw_arcade'
   | 'cotw_smart';
 
-export type MoveCategory = 'normal' | 'commandNormal' | 'special' | 'common';
+export type MoveCategory = 'normal' | 'commandNormal' | 'special' | 'super' | 'common';
 
 export interface ControlType {
   id: ControlTypeId;
@@ -39,6 +39,9 @@ export interface Move {
   entryType: 'preset' | 'added';
   totalFrames: number | null;
   startupFrames: number | null;
+  /** 最終段の持続開始F。公式表の詳細が "9-11, 19-20" の場合は 19 を保存する。 */
+  activeStartFrames?: number | null;
+  /** 最終持続F。公式表の持続が "4-6" の場合は 6、"9-11, 19-20" の場合は 20 を保存する。 */
   activeFrames: number | null;
   tags: string[];
   memo: string;
