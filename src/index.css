@@ -544,6 +544,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   min-width: 0;
 }
 .move-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.move-memo-preview {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .move-tags-inline { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 
 .move-row-actions { display: flex; gap: 0.3rem; align-items: center; flex-shrink: 0; }

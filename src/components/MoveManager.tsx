@@ -79,11 +79,18 @@ function MoveRow({
   onOpenDetail: (move: Move) => void;
   onDeleteRequest: (id: string) => void;
 }) {
+  const memoPreview = getMoveMemoPreview(move.memo);
+
   return (
     <div className={`move-row ${!move.enabled ? 'move-disabled' : ''}`}>
       {/* 技名 */}
       <div className="move-row-name">
         <span className="move-name">{move.name}</span>
+        {memoPreview && (
+          <span className="move-memo-preview" title={move.memo}>
+            {memoPreview}
+          </span>
+        )}
         {move.tags.length > 0 && (
           <div className="move-tags-inline">
             {move.tags.map((t) => <span key={t} className="tag">{t}</span>)}
@@ -99,14 +106,14 @@ function MoveRow({
         onCommit={(v) => onFrameUpdate(move.id, { startupFrames: v })}
       />
       <FrameInput
-        value={move.activeFrames}
-        placeholder="--"
-        onCommit={(v) => onFrameUpdate(move.id, { activeFrames: v })}
-      />
-      <FrameInput
         value={move.activeStartFrames ?? null}
         placeholder="発生F"
         onCommit={(v) => onFrameUpdate(move.id, { activeStartFrames: v })}
+      />
+      <FrameInput
+        value={move.activeFrames}
+        placeholder="--"
+        onCommit={(v) => onFrameUpdate(move.id, { activeFrames: v })}
       />
       <FrameInput
         value={move.totalFrames}
@@ -132,6 +139,15 @@ function MoveRow({
       </div>
     </div>
   );
+}
+
+function getMoveMemoPreview(memo: string): string {
+  const trimmed = memo.trim();
+  if (!trimmed) return '';
+  const noteLine = trimmed
+    .split('\n')
+    .find((line) => line.trim().startsWith('備考:'));
+  return (noteLine ?? trimmed.split('\n')[0]).trim();
 }
 
 // ---- メインコンポーネント ----
