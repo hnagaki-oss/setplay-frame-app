@@ -126,23 +126,26 @@ export function DataManager({ showToast }: Props) {
 
       await db.moves.where('characterId').equals(character.id).delete();
 
-      const timestamp = now();
-      const moves: Move[] = SF6_CHUNLI_CLASSIC_MOVES.map((move) => ({
-        id: genUUID(),
-        gameId: meta.gameId,
-        controlTypeId: meta.controlTypeId,
-        characterId: character.id,
-        entryType: 'preset',
-        tags: [],
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        ...move,
-        memo: [
-          `データ最終確認日: ${meta.dataCheckedAt}`,
-          `参照元: ${meta.sourceName}`,
-          move.memo,
-        ].join('\n'),
-      }));
+      const baseTime = Date.now();
+      const moves: Move[] = SF6_CHUNLI_CLASSIC_MOVES.map((move, index) => {
+        const timestamp = new Date(baseTime + index).toISOString();
+        return {
+          id: genUUID(),
+          gameId: meta.gameId,
+          controlTypeId: meta.controlTypeId,
+          characterId: character.id,
+          entryType: 'preset',
+          tags: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          ...move,
+          memo: [
+            `データ最終確認日: ${meta.dataCheckedAt}`,
+            `参照元: ${meta.sourceName}`,
+            move.memo,
+          ].join('\n'),
+        };
+      });
 
       await db.moves.bulkAdd(moves);
       importedCount = moves.length;

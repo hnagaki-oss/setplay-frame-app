@@ -41,9 +41,11 @@ export function mapOfficialCategory(category: string): MoveCategory | null {
 }
 
 export function shouldImportOfficialFrameMove(move: OfficialFrameMoveSource): boolean {
-  const haystack = `${move.name} ${move.inputText ?? ''} ${move.note ?? ''}`;
-  if (haystack.includes('ジャンプ')) return false;
-  if (move.officialCategory === '必殺技' && /空中|ジャンプ中/.test(haystack)) return false;
+  const name = move.name;
+  const inputText = move.inputText ?? '';
+  if (/ジャンプ中に/.test(inputText)) return false;
+  if (/^ジャンプ/.test(name)) return false;
+  if (/空中/.test(name)) return false;
   return mapOfficialCategory(move.officialCategory) !== null;
 }
 

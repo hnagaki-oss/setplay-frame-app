@@ -177,17 +177,22 @@ export function MoveManager({ character, showToast }: Props) {
     if (preset?.tags?.length) setAvailableTags(preset.tags);
     else setAvailableTags(INITIAL_TAGS);
 
-    // プリセット順にソート
+    const compareByCreatedAt = (a: Move, b: Move) =>
+      a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name, 'ja');
+
+    // プリセット順にソート。プリセット順がないデータは投入順を維持する。
     if (preset && preset.moves.length > 0) {
       const presetMoves = preset.moves;
       ms.sort((a, b) => {
         const ia = presetMoves.findIndex((p) => p.name === a.name && p.category === a.category);
         const ib = presetMoves.findIndex((p) => p.name === b.name && p.category === b.category);
-        if (ia === -1 && ib === -1) return a.createdAt.localeCompare(b.createdAt);
+        if (ia === -1 && ib === -1) return compareByCreatedAt(a, b);
         if (ia === -1) return 1;
         if (ib === -1) return -1;
         return ia - ib;
       });
+    } else {
+      ms.sort(compareByCreatedAt);
     }
 
     setMoves(ms);
