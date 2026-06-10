@@ -7,15 +7,33 @@ import {
   SF6_CHUNLI_CLASSIC_DATA_META,
   SF6_CHUNLI_CLASSIC_MOVES,
 } from '../sf6ChunliClassicMoves';
+import {
+  SF6_CHUNLI_MODERN_DATA_META,
+  SF6_CHUNLI_MODERN_MOVES,
+} from '../sf6ChunliModernMoves';
 
 interface Props {
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
+type OfficialSeedMeta = {
+  gameId: 'sf6';
+  controlTypeId: 'sf6_classic' | 'sf6_modern';
+  characterName: string;
+  sourceName: string;
+  dataCheckedAt: string;
+};
+
+type OfficialImportTarget = {
+  label: string;
+  meta: OfficialSeedMeta;
+  moves: Array<Omit<Move, 'id' | 'gameId' | 'controlTypeId' | 'characterId' | 'entryType' | 'tags' | 'createdAt' | 'updatedAt'>>;
+};
+
 export function DataManager({ showToast }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [resetConfirm, setResetConfirm] = useState(false);
-  const [chunliImportConfirm, setChunliImportConfirm] = useState(false);
+  const [officialImportTarget, setOfficialImportTarget] = useState<OfficialImportTarget | null>(null);
 
   // ---- エクスポート ----
   const handleExport = async () => {
@@ -100,8 +118,8 @@ export function DataManager({ showToast }: Props) {
   };
 
   // ---- 公式データ試験投入 ----
-  const handleImportChunliClassic = async () => {
-    const meta = SF6_CHUNLI_CLASSIC_DATA_META;
+  const handleImportOfficialMoves = async (target: OfficialImportTarget) => {
+    const { label, meta } = target;
     let importedCount = 0;
 
     await db.transaction('rw', [db.characters, db.moves], async () => {
@@ -127,7 +145,7 @@ export function DataManager({ showToast }: Props) {
       await db.moves.where('characterId').equals(character.id).delete();
 
       const baseTime = Date.now();
-      const moves: Move[] = SF6_CHUNLI_CLASSIC_MOVES.map((move, index) => {
+      const moves: Move[] = target.moves.map((move, index) => {
         const timestamp = new Date(baseTime + index).toISOString();
         return {
           id: genUUID(),
@@ -151,9 +169,22 @@ export function DataManager({ showToast }: Props) {
       importedCount = moves.length;
     });
 
-    setChunliImportConfirm(false);
-    showToast(`春麗クラシック公式データを投入しました（${importedCount}件）`, 'success');
+    setOfficialImportTarget(null);
+    showToast(`${label}公式データを投入しました（${importedCount}件）`, 'success');
   };
+
+  const officialImportTargets: OfficialImportTarget[] = [
+    {
+      label: '春麗クラシック',
+      meta: SF6_CHUNLI_CLASSIC_DATA_META,
+      moves: SF6_CHUNLI_CLASSIC_MOVES,
+    },
+    {
+      label: '春麗モダン',
+      meta: SF6_CHUNLI_MODERN_DATA_META,
+      moves: SF6_CHUNLI_MODERN_MOVES,
+    },
+  ];
 
   return (
     <div className="data-manager">
@@ -214,20 +245,24 @@ export function DataManager({ showToast }: Props) {
       <div className="data-action-card">
         <h3>🧪 公式データ試験投入</h3>
         <p>
-          {SF6_CHUNLI_CLASSIC_DATA_META.sourceName} を春麗 / クラシックへ投入します。<br />
+          {SF6_CHUNLI_CLASSIC_DATA_META.sourceName} を春麗へ投入します。<br />
           データ最終確認日：<code>{SF6_CHUNLI_CLASSIC_DATA_META.dataCheckedAt}</code><br />
-          既存の春麗クラシック技データは差し替えられます。
+          既存の対象操作タイプの春麗技データは差し替えられます。
         </p>
-        {chunliImportConfirm ? (
+        {officialImportTarget ? (
           <div className="delete-confirm-row">
-            <span>春麗クラシックの技データを差し替えますか？</span>
-            <button className="btn btn-primary" onClick={handleImportChunliClassic}>投入する</button>
-            <button className="btn btn-ghost" onClick={() => setChunliImportConfirm(false)}>キャンセル</button>
+            <span>{officialImportTarget.label}の技データを差し替えますか？</span>
+            <button className="btn btn-primary" onClick={() => handleImportOfficialMoves(officialImportTarget)}>投入する</button>
+            <button className="btn btn-ghost" onClick={() => setOfficialImportTarget(null)}>キャンセル</button>
           </div>
         ) : (
-          <button className="btn btn-outline" onClick={() => setChunliImportConfirm(true)}>
-            春麗クラシック公式データを投入
-          </button>
+          <div className="delete-confirm-row">
+            {officialImportTargets.map((target) => (
+              <button key={target.meta.controlTypeId} className="btn btn-outline" onClick={() => setOfficialImportTarget(target)}>
+                {target.label}公式データを投入
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
