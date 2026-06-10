@@ -329,6 +329,74 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   justify-content: flex-end;
 }
 
+.official-import-modal { max-height: 88vh; }
+.official-import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.official-import-summary span,
+.official-import-selected,
+.official-import-status {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+}
+.official-import-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.official-import-selected { margin-left: auto; }
+.official-import-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 48vh;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+.official-import-row {
+  display: grid;
+  grid-template-columns: auto minmax(130px, 1fr) auto auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 0.88rem;
+}
+.official-import-row input { accent-color: var(--primary); }
+.official-import-row-changed { border-color: var(--primary); background: var(--primary-light); }
+.official-import-row-unavailable { opacity: 0.65; }
+.official-import-main {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  min-width: 0;
+}
+.official-import-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.official-import-main span,
+.official-import-counts {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.official-import-row-changed .official-import-status {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
 /* ========================
    Select Views
    ======================== */

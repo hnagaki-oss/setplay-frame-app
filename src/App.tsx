@@ -17,9 +17,11 @@ import { DataManager } from './components/DataManager';
 import { SettingsModal } from './components/SettingsModal';
 import {
   ensureCharacterForControlType,
-  importAvailableOfficialTargetsForGame,
   importOfficialForCharacterControl,
+  importOfficialTargetIfChanged,
+  previewAvailableOfficialTargetsForGame,
   previewOfficialForCharacterControl,
+  type OfficialBulkImportPreview,
 } from './officialImports';
 
 type AppView = 'gameSelect' | 'controlTypeSelect' | 'characterSelect' | 'main';
@@ -85,6 +87,9 @@ export default function App() {
   const [searchDefaults, setSearchDefaults] = useState<SearchDefaults>(DEFAULT_SEARCH_DEFAULTS);
   const [showSettings, setShowSettings] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [bulkImportPreview, setBulkImportPreview] = useState<OfficialBulkImportPreview | null>(null);
+  const [selectedBulkImportIds, setSelectedBulkImportIds] = useState<Set<string>>(new Set());
+  const [isApplyingBulkImport, setIsApplyingBulkImport] = useState(false);
 
   const [pendingResults, setPendingResults] = useState<SearchResult[] | null>(null);
   const [pendingCondition, setPendingCondition] = useState<SearchCondition | null>(null);
@@ -139,17 +144,83 @@ export default function App() {
 
   const handleBulkOfficialImport = async () => {
     if (!selectedGame) return;
-    const result = await importAvailableOfficialTargetsForGame(selectedGame);
-    const importedCount = result.imported.filter((item) => item.status === 'imported').length;
-    const unchangedCount = result.imported.filter((item) => item.status === 'unchanged').length;
-    const unavailableCount = result.imported.filter((item) => item.status === 'unavailable').length;
-    const sourceLabel = result.rosterSource === 'official-site' ? '公式サイト' : '内蔵ロスター';
+    const preview = await previewAvailableOfficialTargetsForGame(selectedGame);
+    const changedItems = preview.items.filter((item) => item.status === 'changed' && item.target);
+    const unchangedCount = preview.items.filter((item) => item.status === 'unchanged').length;
+    const unavailableCount = preview.items.filter((item) => item.status === 'unavailable').length;
+    const sourceLabel = preview.rosterSource === 'official-site' ? '公式サイト' : '内蔵ロスター';
+
+    if (preview.rosterError) {
+      showToast(`公式サイト取得はフォールバックしました：${preview.rosterError}`, 'info');
+    }
+
+    if (changedItems.length === 0) {
+      showToast(
+        `公式データ確認完了（${sourceLabel}）：不足キャラ${preview.addedCharacters}件、更新対象0件、変更なし${unchangedCount}件、未取得${unavailableCount}件`,
+        preview.addedCharacters > 0 ? 'success' : 'info'
+      );
+      return;
+    }
+
+    setBulkImportPreview(preview);
+    setSelectedBulkImportIds(new Set(changedItems.map((item) => item.id)));
     showToast(
-      `公式データ確認完了（${sourceLabel}）：不足キャラ${result.addedCharacters}件、更新${importedCount}件、変更なし${unchangedCount}件、未取得${unavailableCount}件`,
-      importedCount > 0 || result.addedCharacters > 0 ? 'success' : 'info'
+      `公式データ確認完了（${sourceLabel}）：更新候補${changedItems.length}件、変更なし${unchangedCount}件、未取得${unavailableCount}件`,
+      'info'
     );
-    if (result.rosterError) {
-      showToast(`公式サイト取得はフォールバックしました：${result.rosterError}`, 'info');
+  };
+
+  const handleToggleBulkImportItem = (id: string) => {
+    setSelectedBulkImportIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAllBulkImportItems = () => {
+    if (!bulkImportPreview) return;
+    setSelectedBulkImportIds(new Set(
+      bulkImportPreview.items
+        .filter((item) => item.status === 'changed' && item.target)
+        .map((item) => item.id)
+    ));
+  };
+
+  const handleClearBulkImportItems = () => {
+    setSelectedBulkImportIds(new Set());
+  };
+
+  const handleCancelBulkImport = () => {
+    setBulkImportPreview(null);
+    setSelectedBulkImportIds(new Set());
+  };
+
+  const handleApplyBulkImport = async () => {
+    if (!bulkImportPreview) return;
+    const selectedTargets = bulkImportPreview.items
+      .filter((item) => selectedBulkImportIds.has(item.id) && item.target)
+      .map((item) => item.target!);
+
+    if (selectedTargets.length === 0) {
+      showToast('インポート対象が選択されていません', 'info');
+      return;
+    }
+
+    setIsApplyingBulkImport(true);
+    try {
+      const imported = [];
+      for (const target of selectedTargets) {
+        imported.push(await importOfficialTargetIfChanged(target));
+      }
+      const importedCount = imported.filter((item) => item.status === 'imported').length;
+      const unchangedCount = imported.filter((item) => item.status === 'unchanged').length;
+      showToast(`選択した公式データを反映しました：更新${importedCount}件、変更なし${unchangedCount}件`, 'success');
+      setBulkImportPreview(null);
+      setSelectedBulkImportIds(new Set());
+    } finally {
+      setIsApplyingBulkImport(false);
     }
   };
 
@@ -263,6 +334,65 @@ export default function App() {
             onClose={handleSettingsClose}
             showToast={showToast}
           />
+        )}
+
+        {bulkImportPreview && (
+          <div className="modal-overlay" onClick={isApplyingBulkImport ? undefined : handleCancelBulkImport}>
+            <div className="modal modal-xl official-import-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>公式データ一括インポート確認</h3>
+                <button className="btn btn-ghost btn-sm" onClick={handleCancelBulkImport} disabled={isApplyingBulkImport}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="official-import-summary">
+                  <span>不足キャラ {bulkImportPreview.addedCharacters}件</span>
+                  <span>更新候補 {bulkImportPreview.items.filter((item) => item.status === 'changed').length}件</span>
+                  <span>変更なし {bulkImportPreview.items.filter((item) => item.status === 'unchanged').length}件</span>
+                  <span>未取得 {bulkImportPreview.items.filter((item) => item.status === 'unavailable').length}件</span>
+                </div>
+                <div className="official-import-toolbar">
+                  <button className="btn btn-outline btn-sm" onClick={handleSelectAllBulkImportItems} disabled={isApplyingBulkImport}>全選択</button>
+                  <button className="btn btn-ghost btn-sm" onClick={handleClearBulkImportItems} disabled={isApplyingBulkImport}>選択解除</button>
+                  <span className="official-import-selected">選択中 {selectedBulkImportIds.size}件</span>
+                </div>
+                <div className="official-import-list">
+                  {bulkImportPreview.items.map((item) => {
+                    const isChanged = item.status === 'changed' && item.target;
+                    return (
+                      <label key={item.id} className={`official-import-row official-import-row-${item.status}`}>
+                        <input
+                          type="checkbox"
+                          checked={selectedBulkImportIds.has(item.id)}
+                          disabled={!isChanged || isApplyingBulkImport}
+                          onChange={() => handleToggleBulkImportItem(item.id)}
+                        />
+                        <span className="official-import-main">
+                          <strong>{item.characterName}</strong>
+                          <span>{item.controlTypeName}</span>
+                        </span>
+                        <span className="official-import-counts">
+                          現在 {item.currentCount}件 / 公式 {item.officialCount}件
+                        </span>
+                        <span className="official-import-status">
+                          {item.status === 'changed' ? '更新候補' : item.status === 'unchanged' ? '変更なし' : '未取得'}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-ghost" onClick={handleCancelBulkImport} disabled={isApplyingBulkImport}>キャンセル</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleApplyBulkImport}
+                  disabled={selectedBulkImportIds.size === 0 || isApplyingBulkImport}
+                >
+                  {isApplyingBulkImport ? '反映中...' : '選択した差分をインポート'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* セットプレイ登録確認モーダル */}

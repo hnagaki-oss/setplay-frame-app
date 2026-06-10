@@ -46,6 +46,21 @@ export type OfficialImportPreview = {
   dataCheckedAt?: string;
 };
 
+export type OfficialBulkImportPreviewItem = OfficialImportPreview & {
+  id: string;
+  characterName: string;
+  controlTypeId: ControlTypeId;
+  controlTypeName: string;
+  target?: OfficialImportTarget;
+};
+
+export type OfficialBulkImportPreview = {
+  addedCharacters: number;
+  items: OfficialBulkImportPreviewItem[];
+  rosterSource: 'official-site' | 'fallback' | 'preset';
+  rosterError?: string;
+};
+
 export const OFFICIAL_IMPORT_TARGETS: OfficialImportTarget[] = [
   {
     label: '春麗クラシック',
@@ -245,6 +260,51 @@ export async function previewOfficialForCharacterControl(
   };
 }
 
+export async function previewAvailableOfficialTargetsForGame(game: Game): Promise<OfficialBulkImportPreview> {
+  const roster = game.id === 'sf6' ? await fetchSf6OfficialRoster() : null;
+  const addedCharacters = roster
+    ? await ensureGameCharacterNames(game, roster.characters.map((character) => character.name))
+    : await ensureGameCharacterRoster(game);
+  const items: OfficialBulkImportPreviewItem[] = [];
+
+  if (game.id === 'sf6' && roster) {
+    const supportedControlTypes = game.controlTypes.filter((controlType) =>
+      controlType.id === 'sf6_classic' || controlType.id === 'sf6_modern'
+    );
+
+    for (const character of roster.characters) {
+      for (const controlType of supportedControlTypes) {
+        const id = `${game.id}:${controlType.id}:${character.slug}`;
+        try {
+          const target = await resolveOfficialImportTarget(game.id, controlType.id, character.name, character);
+          if (!target) {
+            items.push(buildUnavailableBulkPreview(id, character.name, controlType));
+            continue;
+          }
+          items.push(await buildBulkPreviewItem(id, target, controlType, character.name));
+        } catch {
+          items.push(buildUnavailableBulkPreview(id, character.name, controlType));
+        }
+      }
+    }
+  } else {
+    const gameTargets = OFFICIAL_IMPORT_TARGETS.filter((target) => target.meta.gameId === game.id);
+    for (const target of gameTargets) {
+      const controlType = game.controlTypes.find((candidate) => candidate.id === target.meta.controlTypeId);
+      if (!controlType) continue;
+      const id = `${game.id}:${target.meta.controlTypeId}:${target.meta.characterName}`;
+      items.push(await buildBulkPreviewItem(id, target, controlType, target.meta.characterName));
+    }
+  }
+
+  return {
+    addedCharacters,
+    items,
+    rosterSource: roster?.source ?? 'preset',
+    rosterError: roster?.error,
+  };
+}
+
 export async function importAvailableOfficialTargetsForGame(game: Game): Promise<{
   addedCharacters: number;
   imported: OfficialImportResult[];
@@ -288,6 +348,54 @@ export async function importAvailableOfficialTargetsForGame(game: Game): Promise
     imported,
     rosterSource: roster?.source ?? 'preset',
     rosterError: roster?.error,
+  };
+}
+
+async function buildBulkPreviewItem(
+  id: string,
+  target: OfficialImportTarget,
+  controlType: ControlType,
+  characterName: string
+): Promise<OfficialBulkImportPreviewItem> {
+  const existingCharacters = await db.characters
+    .where('[gameId+controlTypeId]')
+    .equals([target.meta.gameId, target.meta.controlTypeId])
+    .toArray();
+  const character = existingCharacters.find((candidate) => candidate.name === target.meta.characterName);
+  const currentMoves = character ? await db.moves.where('characterId').equals(character.id).toArray() : [];
+  currentMoves.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name, 'ja'));
+  const changed = hasOfficialMoveDiff(currentMoves, target.moves);
+
+  return {
+    id,
+    status: changed ? 'changed' : 'unchanged',
+    label: target.label,
+    characterName,
+    controlTypeId: target.meta.controlTypeId,
+    controlTypeName: controlType.name,
+    currentCount: currentMoves.length,
+    officialCount: target.moves.length,
+    sourceName: target.meta.sourceName,
+    sourceUrl: target.meta.sourceUrl,
+    dataCheckedAt: target.meta.dataCheckedAt,
+    target,
+  };
+}
+
+function buildUnavailableBulkPreview(
+  id: string,
+  characterName: string,
+  controlType: ControlType
+): OfficialBulkImportPreviewItem {
+  return {
+    id,
+    status: 'unavailable',
+    label: `${characterName} ${controlType.name}`,
+    characterName,
+    controlTypeId: controlType.id,
+    controlTypeName: controlType.name,
+    currentCount: 0,
+    officialCount: 0,
   };
 }
 
