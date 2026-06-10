@@ -298,6 +298,7 @@ function findMoveCommand(
 function normalizeMoveNameForCommandLookup(moveName: string): string {
   return moveName
     .replace(/^\[[^\]]+\]/, '')
+    .replace(/^(?:P|K)\s+/, '')
     .replace(/^(?:OD\s+)?(?:弱|中|強)\s+/, '')
     .replace(/^OD\s+/, '')
     .replace(/（[12]段目）$/, '')
@@ -351,10 +352,9 @@ function applyDirectionalVariantToCommand(moveName: string, command: string): st
 
   const directionPattern = /(?:4|2|6)(?:\s+or\s+(?:4|2|6))*\s+or\s+\+\s*|(?:4|2|6)(?:\s+or\s+(?:4|2|6))*\s*\+\s*/;
   const resolved = command.replace(directionPattern, `${direction} + `);
-  return resolved
+  return collapseRepeatedAttackButtons(resolved
     .replace(/\s+(弱K\s*\|\s*中K\s*\|\s*強K|弱P\s*\|\s*中P\s*\|\s*強P)$/, '')
-    .replace(/(\+\s*攻撃)(?:\s+攻撃)+$/, '$1')
-    .trim();
+    .trim());
 }
 
 function applyMoveStageToCommand(moveName: string, command: string): string {
@@ -427,7 +427,7 @@ function parseMovelistEntriesFromChunk(chunk: string, characterSlug: string): Sf
 function normalizeOfficialCommandNotation(command: string | null): string {
   if (!command) return '';
 
-  const normalized = command
+  const normalized = collapseRepeatedAttackButtons(command
     .replace(/Nor6/g, 'N or 6')
     .replace(/Nutral/gi, 'N')
     .replace(/\bLPMPHP\b/g, '弱P/中P/強P')
@@ -445,9 +445,15 @@ function normalizeOfficialCommandNotation(command: string | null): string {
     .replace(/\bM(?=[弱中強])/g, '')
     .replace(/\b[a-z]+T\d+\b/g, '')
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim());
 
   return normalized;
+}
+
+function collapseRepeatedAttackButtons(command: string): string {
+  return command
+    .replace(/攻撃\s+攻撃\s+攻撃/g, '攻撃×3')
+    .replace(/攻撃\s+攻撃/g, '攻撃×2');
 }
 
 function extractActiveTexts(activeCell: HTMLElement): { activeText: string; activeDetailText: string } {
