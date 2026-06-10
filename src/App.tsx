@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { db } from './db';
 import type { Game, ControlType, Character, Move, Setplay, SearchResult, SearchCondition, SearchSessionOverride, ToastItem, SearchDefaults, Starter } from './types';
-import { GAMES, INITIAL_CHARACTERS, DEFAULT_SEARCH_DEFAULTS, CHARACTER_NAME_MIGRATIONS } from './constants';
+import { GAMES, DEFAULT_SEARCH_DEFAULTS } from './constants';
 import { genUUID, now } from './utils';
 import { Header } from './components/Header';
 import { Toast } from './components/Toast';
@@ -15,105 +15,43 @@ import { SetplayList } from './components/SetplayList';
 import { SetplayDetail } from './components/SetplayDetail';
 import { DataManager } from './components/DataManager';
 import { SettingsModal } from './components/SettingsModal';
+import {
+  ensureCharacterForControlType,
+  importAvailableOfficialTargetsForGame,
+  importOfficialForCharacterControl,
+} from './officialImports';
 
 type AppView = 'gameSelect' | 'controlTypeSelect' | 'characterSelect' | 'main';
 type MainTab = 'search' | 'moves' | 'setplays' | 'data';
 type SubView = 'main' | 'setplayDetail';
 
-async function seedCharacters(game: Game, controlType: ControlType) {
-  const canonicalNames = INITIAL_CHARACTERS[controlType.id] ?? [];
-  if (canonicalNames.length === 0) return;
-
-  const existing = await db.characters
-    .where('[gameId+controlTypeId]')
-    .equals([game.id, controlType.id])
-    .toArray();
-
-  // キャラごとにデータ（技・セットプレイ）の有無を確認
-  const withData: Character[] = [];
-  const withoutData: Character[] = [];
-  for (const char of existing) {
-    const hasMoves    = (await db.moves.where('characterId').equals(char.id).count()) > 0;
-    const hasSetplays = (await db.setplays.where('characterId').equals(char.id).count()) > 0;
-    if (hasMoves || hasSetplays) {
-      withData.push(char);
-    } else {
-      withoutData.push(char);
-    }
-  }
-
-  // データなしキャラを削除（名前が正しくない重複キャラ等を一掃）
-  for (const char of withoutData) {
-    await db.characters.delete(char.id);
-  }
-
-  // データありキャラは名前をマイグレーション（旧名 → 正式日本語名）
-  // ただし現在の名前がすでにこのゲームのカノニカルリストにある場合はスキップ
-  // （例: CotWの「テリー・ボガード」をSF6用ルールで「テリー」に誤改名しないようにする）
-  for (const char of withData) {
-    if (canonicalNames.includes(char.name)) continue;
-    const newName = CHARACTER_NAME_MIGRATIONS[char.name];
-    if (newName && newName !== char.name) {
-      await db.characters.update(char.id, { name: newName, updatedAt: now() });
-    }
-  }
-
-  // 現在残っているキャラ名を取得
-  const remaining = await db.characters
-    .where('[gameId+controlTypeId]')
-    .equals([game.id, controlType.id])
-    .toArray();
-  const existingNames = new Set(remaining.map((c) => c.name));
-
-  // 不足しているカノニカルキャラを追加
-  const toAdd = canonicalNames.filter((name) => !existingNames.has(name));
-  if (toAdd.length === 0) return;
-  const chars: Character[] = toAdd.map((name) => ({
-    id: genUUID(),
-    gameId: game.id,
-    controlTypeId: controlType.id,
-    name,
-    entryType: 'preset',
-    createdAt: now(),
-    updatedAt: now(),
-  }));
-  await db.characters.bulkAdd(chars);
-}
-
-/** 操作タイプ配下の技が0件のキャラ全員にプリセット技を一括シード */
-async function seedMovesForAllCharacters(game: Game, controlType: ControlType) {
+async function seedMovesForCharacter(game: Game, controlType: ControlType, character: Character) {
   const preset = await db.presets.get(`${game.id}_${controlType.id}`);
   if (!preset || preset.moves.length === 0) return;
 
-  const characters = await db.characters
-    .where('[gameId+controlTypeId]')
-    .equals([game.id, controlType.id])
-    .toArray();
+  const moveCount = await db.moves.where('characterId').equals(character.id).count();
+  if (moveCount > 0) return;
 
-  for (const char of characters) {
-    const moveCount = await db.moves.where('characterId').equals(char.id).count();
-    if (moveCount > 0) continue; // 既に技あり → スキップ
-
-    const moves: Move[] = preset.moves.map((p) => ({
-      id: genUUID(),
-      gameId: game.id,
-      controlTypeId: controlType.id,
-      characterId: char.id,
-      name: p.name,
-      category: p.category,
-      entryType: 'preset' as const,
-      totalFrames: null,
-      startupFrames: null,
-      activeStartFrames: null,
-      activeFrames: null,
-      tags: [],
-      memo: '',
-      enabled: true,
-      createdAt: now(),
-      updatedAt: now(),
-    }));
-    await db.moves.bulkAdd(moves);
-  }
+  const timestamp = now();
+  const moves: Move[] = preset.moves.map((p) => ({
+    id: genUUID(),
+    gameId: game.id,
+    controlTypeId: controlType.id,
+    characterId: character.id,
+    name: p.name,
+    category: p.category,
+    entryType: 'preset' as const,
+    totalFrames: null,
+    startupFrames: null,
+    activeStartFrames: null,
+    activeFrames: null,
+    tags: [],
+    memo: '',
+    enabled: true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }));
+  await db.moves.bulkAdd(moves);
 }
 
 /** 起動時マイグレーション: sf6_classic プリセットを sf6_modern にコピー（未設定の場合のみ）
@@ -138,6 +76,7 @@ export default function App() {
   const [view, setView] = useState<AppView>('gameSelect');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [selectedControlType, setSelectedControlType] = useState<ControlType | null>(null);
+  const [selectedCharacterName, setSelectedCharacterName] = useState<string | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [currentTab, setCurrentTab] = useState<MainTab>('search');
   const [subView, setSubView] = useState<SubView>('main');
@@ -166,37 +105,61 @@ export default function App() {
   // ゲーム選択
   const handleSelectGame = (game: Game) => {
     setSelectedGame(game);
+    setSelectedCharacterName(null);
+    setSelectedControlType(null);
+    setSelectedCharacter(null);
+    setView('characterSelect');
+  };
+
+  // キャラ選択 → 操作タイプ選択へ
+  const handleSelectCharacter = (characterName: string) => {
+    setSelectedCharacterName(characterName);
     setSelectedControlType(null);
     setSelectedCharacter(null);
     setView('controlTypeSelect');
   };
 
-  // 操作タイプ選択 → キャラ選択へ直接（プリセットはヘッダーの⚙️から設定）
+  // 操作タイプ選択 → メインへ
   const handleSelectControlType = async (ct: ControlType) => {
-    if (!selectedGame) return;
+    if (!selectedGame || !selectedCharacterName) return;
     setSelectedControlType(ct);
-    setSelectedCharacter(null);
-    await seedCharacters(selectedGame, ct);
-    // 技が0件のキャラ全員にプリセット技を一括シード
-    await seedMovesForAllCharacters(selectedGame, ct);
+    const character = await ensureCharacterForControlType(selectedGame, ct, selectedCharacterName);
+    setSelectedCharacter(character);
+    await seedMovesForCharacter(selectedGame, ct, character);
     // 保存済みプリセットの searchDefaults を読み込む
     const pid = `${selectedGame.id}_${ct.id}`;
     const preset = await db.presets.get(pid);
     if (preset) setSearchDefaults(preset.searchDefaults);
     else setSearchDefaults(DEFAULT_SEARCH_DEFAULTS);
-    setView('characterSelect');
-  };
-
-  // キャラ選択
-  const handleSelectCharacter = async (char: Character) => {
-    setSelectedCharacter(char);
     setCurrentTab('search');
     setSubView('main');
-    // プリセットの searchDefaults を再ロード
-    const pid = `${char.gameId}_${char.controlTypeId}`;
-    const preset = await db.presets.get(pid);
-    if (preset) setSearchDefaults(preset.searchDefaults);
     setView('main');
+  };
+
+  const handleBulkOfficialImport = async () => {
+    if (!selectedGame) return;
+    const result = await importAvailableOfficialTargetsForGame(selectedGame);
+    const importedCount = result.imported.filter((item) => item.status === 'imported').length;
+    const unchangedCount = result.imported.filter((item) => item.status === 'unchanged').length;
+    showToast(
+      `公式データ確認完了：不足キャラ${result.addedCharacters}件、更新${importedCount}件、変更なし${unchangedCount}件`,
+      importedCount > 0 || result.addedCharacters > 0 ? 'success' : 'info'
+    );
+  };
+
+  const handleSingleOfficialImport = async (ct: ControlType) => {
+    if (!selectedGame || !selectedCharacterName) return;
+    await ensureCharacterForControlType(selectedGame, ct, selectedCharacterName);
+    const result = await importOfficialForCharacterControl(selectedGame.id, ct.id, selectedCharacterName);
+    if (result.status === 'unavailable') {
+      showToast(`「${selectedCharacterName} / ${ct.name}」の公式データはまだ未対応です`, 'info');
+      return;
+    }
+    if (result.status === 'unchanged') {
+      showToast(`${result.label}公式データに差分はありません`, 'info');
+      return;
+    }
+    showToast(`${result.label}公式データを投入しました（${result.importedCount}件）`, 'success');
   };
 
   // 設定モーダルを閉じたあとに searchDefaults を再ロード
@@ -228,15 +191,19 @@ export default function App() {
 
   // ヘッダーナビ
   const goToGameSelect = () => {
-    setSelectedGame(null); setSelectedControlType(null); setSelectedCharacter(null);
+    setSelectedGame(null); setSelectedCharacterName(null); setSelectedControlType(null); setSelectedCharacter(null);
     setView('gameSelect');
   };
   const goToControlTypeSelect = () => {
+    if (!selectedCharacterName) {
+      setView('characterSelect');
+      return;
+    }
     setSelectedControlType(null); setSelectedCharacter(null);
     setView('controlTypeSelect');
   };
   const goToCharacterSelect = () => {
-    setSelectedCharacter(null); setSubView('main');
+    setSelectedCharacterName(null); setSelectedControlType(null); setSelectedCharacter(null); setSubView('main');
     setView('characterSelect');
   };
 
@@ -251,10 +218,11 @@ export default function App() {
         game={fullGame}
         controlType={controlType}
         character={selectedCharacter}
+        characterName={selectedCharacterName}
         currentView={view}
         onClickGame={goToGameSelect}
-        onClickControlType={selectedGame ? goToControlTypeSelect : goToGameSelect}
-        onClickCharacter={selectedControlType ? goToCharacterSelect : () => {}}
+        onClickControlType={selectedCharacterName ? goToControlTypeSelect : () => {}}
+        onClickCharacter={selectedGame ? goToCharacterSelect : () => {}}
         onClickSettings={() => setShowSettings(true)}
       />
 
@@ -287,15 +255,20 @@ export default function App() {
 
         {view === 'gameSelect' && <GameSelect onSelect={handleSelectGame} />}
 
-        {view === 'controlTypeSelect' && fullGame && (
-          <ControlTypeSelect game={fullGame} onSelect={handleSelectControlType} />
+        {view === 'controlTypeSelect' && fullGame && selectedCharacterName && (
+          <ControlTypeSelect
+            game={fullGame}
+            characterName={selectedCharacterName}
+            onSelect={handleSelectControlType}
+            onImportOfficial={handleSingleOfficialImport}
+          />
         )}
 
-        {view === 'characterSelect' && fullGame && controlType && (
+        {view === 'characterSelect' && fullGame && (
           <CharacterSelect
             game={fullGame}
-            controlType={controlType}
             onSelect={handleSelectCharacter}
+            onBulkImportOfficial={handleBulkOfficialImport}
             showToast={showToast}
           />
         )}

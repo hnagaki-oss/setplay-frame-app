@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
-import type { Character, Game, ControlType, Move } from '../types';
+import type { Character, Game } from '../types';
 import { INITIAL_CHARACTERS } from '../constants';
 import { genUUID, now } from '../utils';
 
 interface Props {
   game: Game;
-  controlType: ControlType;
-  onSelect: (char: Character) => void;
+  onSelect: (characterName: string) => void;
+  onBulkImportOfficial: () => Promise<void>;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
+
+type CharacterListItem = {
+  name: string;
+  entryType: 'preset' | 'added';
+  createdAt: string;
+};
 
 const AVATAR_PALETTE = [
   '#3b82f6', '#8b5cf6', '#06b6d4', '#10b981',
@@ -24,8 +30,9 @@ function avatarColor(name: string): string {
 }
 
 // ---- 1枚のキャラカード ----
-function CharacterCard({ char, onSelect, onEdited, showToast }: {
-  char: Character;
+function CharacterCard({ char, gameId, onSelect, onEdited, showToast }: {
+  char: CharacterListItem;
+  gameId: string;
   onSelect: () => void;
   onEdited: () => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
@@ -39,16 +46,24 @@ function CharacterCard({ char, onSelect, onEdited, showToast }: {
   const handleSaveEdit = async () => {
     const trimmed = editName.trim();
     if (!trimmed) return;
-    await db.characters.update(char.id, { name: trimmed, updatedAt: now() });
+    const matches = await db.characters.where('gameId').equals(gameId).toArray();
+    const gameMatches = matches.filter((candidate) => candidate.name === char.name);
+    await Promise.all(gameMatches.map((candidate) =>
+      db.characters.update(candidate.id, { name: trimmed, updatedAt: now() })
+    ));
     showToast('名前を更新しました', 'success');
     setMode('view');
     onEdited();
   };
 
   const handleDelete = async () => {
-    await db.characters.delete(char.id);
-    await db.moves.where('characterId').equals(char.id).delete();
-    await db.setplays.where('characterId').equals(char.id).delete();
+    const allCharacters = await db.characters.where('gameId').equals(gameId).toArray();
+    const targets = allCharacters.filter((candidate) => candidate.name === char.name);
+    for (const target of targets) {
+      await db.characters.delete(target.id);
+      await db.moves.where('characterId').equals(target.id).delete();
+      await db.setplays.where('characterId').equals(target.id).delete();
+    }
     showToast(`「${char.name}」を削除しました`, 'info');
     onEdited();
   };
@@ -111,19 +126,38 @@ function CharacterCard({ char, onSelect, onEdited, showToast }: {
 }
 
 // ---- メインコンポーネント ----
-export function CharacterSelect({ game, controlType, onSelect, showToast }: Props) {
-  const [characters, setCharacters] = useState<Character[]>([]);
+export function CharacterSelect({ game, onSelect, onBulkImportOfficial, showToast }: Props) {
+  const [characters, setCharacters] = useState<CharacterListItem[]>([]);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const chars = await db.characters
-      .where('[gameId+controlTypeId]')
-      .equals([game.id, controlType.id])
-      .toArray();
+    const allCharacters = await db.characters.where('gameId').equals(game.id).toArray();
+    const byName = new Map<string, CharacterListItem>();
 
-    const canonical = INITIAL_CHARACTERS[controlType.id] ?? [];
+    for (const controlType of game.controlTypes) {
+      for (const name of INITIAL_CHARACTERS[controlType.id] ?? []) {
+        if (!byName.has(name)) {
+          byName.set(name, { name, entryType: 'preset', createdAt: '' });
+        }
+      }
+    }
+
+    for (const character of allCharacters) {
+      const existing = byName.get(character.name);
+      if (!existing || existing.createdAt > character.createdAt || existing.createdAt === '') {
+        byName.set(character.name, {
+          name: character.name,
+          entryType: character.entryType,
+          createdAt: character.createdAt,
+        });
+      }
+    }
+
+    const chars = [...byName.values()];
+    const canonical = INITIAL_CHARACTERS[game.controlTypes[0]?.id ?? ''] ?? [];
     chars.sort((a, b) => {
       const ia = canonical.indexOf(a.name);
       const ib = canonical.indexOf(b.name);
@@ -135,7 +169,7 @@ export function CharacterSelect({ game, controlType, onSelect, showToast }: Prop
 
     setCharacters(chars);
     setLoading(false);
-  }, [game.id, controlType.id]);
+  }, [game]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -143,47 +177,37 @@ export function CharacterSelect({ game, controlType, onSelect, showToast }: Prop
     const trimmed = newName.trim();
     if (!trimmed) return;
 
-    const char: Character = {
-      id: genUUID(),
-      gameId: game.id,
-      controlTypeId: controlType.id,
-      name: trimmed,
-      entryType: 'added',
-      createdAt: now(),
-      updatedAt: now(),
-    };
-    await db.characters.add(char);
-
-    // プリセット技を自動シード
-    const pid = `${game.id}_${controlType.id}`;
-    const preset = await db.presets.get(pid);
-    if (preset && preset.moves.length > 0) {
-      const moves: Move[] = preset.moves.map((p) => ({
+    const timestamp = now();
+    const existing = await db.characters.where('gameId').equals(game.id).toArray();
+    const toAdd: Character[] = game.controlTypes
+      .filter((controlType) => !existing.some((character) =>
+        character.controlTypeId === controlType.id && character.name === trimmed
+      ))
+      .map((controlType) => ({
         id: genUUID(),
         gameId: game.id,
         controlTypeId: controlType.id,
-        characterId: char.id,
-        name: p.name,
-        category: p.category,
-        entryType: 'preset' as const,
-        totalFrames: null,
-        startupFrames: null,
-        activeStartFrames: null,
-        activeFrames: null,
-        tags: [],
-        memo: '',
-        enabled: true,
-        createdAt: now(),
-        updatedAt: now(),
+        name: trimmed,
+        entryType: 'added',
+        createdAt: timestamp,
+        updatedAt: timestamp,
       }));
-      await db.moves.bulkAdd(moves);
-      showToast(`「${trimmed}」を追加しました（プリセット技${moves.length}件を登録）`, 'success');
-    } else {
-      showToast(`「${trimmed}」を追加しました`, 'success');
-    }
+
+    if (toAdd.length > 0) await db.characters.bulkAdd(toAdd);
+    showToast(`「${trimmed}」を追加しました`, 'success');
 
     setNewName('');
     load();
+  };
+
+  const handleBulkImportOfficial = async () => {
+    setIsImporting(true);
+    try {
+      await onBulkImportOfficial();
+      await load();
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   if (loading) return <div className="loading">読み込み中...</div>;
@@ -191,7 +215,15 @@ export function CharacterSelect({ game, controlType, onSelect, showToast }: Prop
   return (
     <div className="char-select-view">
       <h2 className="select-title">キャラクターを選択</h2>
-      <p className="select-subtitle">{game.name} / {controlType.name}</p>
+      <p className="select-subtitle">{game.name}</p>
+
+      {game.id === 'sf6' && (
+        <div className="select-actions">
+          <button className="btn btn-outline" onClick={handleBulkImportOfficial} disabled={isImporting}>
+            {isImporting ? '公式データ確認中...' : '公式データを一括インポート'}
+          </button>
+        </div>
+      )}
 
       {characters.length === 0 ? (
         <p className="empty-message">キャラクターが登録されていません。</p>
@@ -199,9 +231,10 @@ export function CharacterSelect({ game, controlType, onSelect, showToast }: Prop
         <div className="char-grid">
           {characters.map((char) => (
             <CharacterCard
-              key={char.id}
+              key={char.name}
               char={char}
-              onSelect={() => onSelect(char)}
+              gameId={game.id}
+              onSelect={() => onSelect(char.name)}
               onEdited={load}
               showToast={showToast}
             />

@@ -364,6 +364,18 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   transform: translateY(-2px);
 }
 .select-card-name { font-size: 1rem; font-weight: 600; }
+.select-card-main-action {
+  width: 100%;
+  min-height: 2.75rem;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+}
+.select-actions {
+  display: flex;
+  justify-content: center;
+  margin: -0.5rem 0 1.25rem;
+}
 
 /* ========================
    Character Select (Grid)

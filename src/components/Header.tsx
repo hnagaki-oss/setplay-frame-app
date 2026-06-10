@@ -5,6 +5,7 @@ interface Props {
   game: Game | null;
   controlType: ControlType | null;
   character: Character | null;
+  characterName: string | null;
   currentView: string;
   onClickGame: () => void;
   onClickControlType: () => void;
@@ -13,9 +14,11 @@ interface Props {
 }
 
 export function Header({
-  game, controlType, character, currentView,
+  game, controlType, character, characterName, currentView,
   onClickGame, onClickControlType, onClickCharacter, onClickSettings,
 }: Props) {
+  const displayCharacterName = character?.name ?? characterName;
+
   return (
     <header className="header">
       <div className="header-title">🎮 セットプレイ検索</div>
@@ -32,22 +35,22 @@ export function Header({
           <>
             <span className="breadcrumb-sep">›</span>
             <button
-              className={`breadcrumb-item ${controlType ? 'active' : 'placeholder'}`}
-              onClick={onClickControlType}
+              className={`breadcrumb-item ${displayCharacterName ? 'active' : 'placeholder'}`}
+              onClick={onClickCharacter}
             >
-              {controlType ? controlType.name : '操作タイプを選択'}
+              {displayCharacterName ?? 'キャラクターを選択'}
             </button>
           </>
         )}
 
-        {controlType && (currentView === 'characterSelect' || currentView === 'main') && (
+        {displayCharacterName && (currentView === 'controlTypeSelect' || currentView === 'main') && (
           <>
             <span className="breadcrumb-sep">›</span>
             <button
-              className={`breadcrumb-item ${character ? 'active' : 'placeholder'}`}
-              onClick={onClickCharacter}
+              className={`breadcrumb-item ${controlType ? 'active' : 'placeholder'}`}
+              onClick={onClickControlType}
             >
-              {character ? character.name : 'キャラクターを選択'}
+              {controlType ? controlType.name : '操作タイプを選択'}
             </button>
           </>
         )}
