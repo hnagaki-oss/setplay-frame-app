@@ -324,10 +324,10 @@ function applyMoveVariantToCommand(moveName: string, command: string): string {
   };
 
   let resolved = command;
-  resolved = select(resolved, '弱P/中P/強P', '中P', '強P', '弱P+中P', '弱P+強P', '中P+強P');
-  resolved = select(resolved, '弱K/中K/強K', '中K', '強K', '弱K+中K', '弱K+強K', '中K+強K');
-  resolved = select(resolved, '弱P | 中P | 強P', '中P', '強P', '弱P+中P', '弱P+強P', '中P+強P');
-  resolved = select(resolved, '弱K | 中K | 強K', '中K', '強K', '弱K+中K', '弱K+強K', '中K+強K');
+  resolved = select(resolved, '弱P/中P/強P', '中P', '強P', '弱中', '弱強', '中強');
+  resolved = select(resolved, '弱K/中K/強K', '中K', '強K', '弱中', '弱強', '中強');
+  resolved = select(resolved, '弱P | 中P | 強P', '中P', '強P', '弱中', '弱強', '中強');
+  resolved = select(resolved, '弱K | 中K | 強K', '中K', '強K', '弱中', '弱強', '中強');
   return resolved;
 }
 
