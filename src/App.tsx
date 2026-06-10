@@ -142,9 +142,10 @@ export default function App() {
     const result = await importAvailableOfficialTargetsForGame(selectedGame);
     const importedCount = result.imported.filter((item) => item.status === 'imported').length;
     const unchangedCount = result.imported.filter((item) => item.status === 'unchanged').length;
+    const unavailableCount = result.imported.filter((item) => item.status === 'unavailable').length;
     const sourceLabel = result.rosterSource === 'official-site' ? '公式サイト' : '内蔵ロスター';
     showToast(
-      `公式データ確認完了（${sourceLabel}）：不足キャラ${result.addedCharacters}件、更新${importedCount}件、変更なし${unchangedCount}件`,
+      `公式データ確認完了（${sourceLabel}）：不足キャラ${result.addedCharacters}件、更新${importedCount}件、変更なし${unchangedCount}件、未取得${unavailableCount}件`,
       importedCount > 0 || result.addedCharacters > 0 ? 'success' : 'info'
     );
     if (result.rosterError) {

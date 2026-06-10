@@ -42,6 +42,7 @@ type Sf6OfficialMovelistEntry = {
 const SF6_OFFICIAL_PROXY_BASE = '/official-site';
 const SF6_OFFICIAL_ORIGIN = 'https://www.streetfighter.com';
 const SF6_ROSTER_SOURCE_PATH = '/6/ja-jp/character/chunli/frame';
+const officialTextCache = new Map<string, Promise<string>>();
 
 const SF6_OFFICIAL_NAME_BY_SLUG: Record<string, string> = {
   ryu: 'リュウ',
@@ -375,6 +376,8 @@ function normalizeOfficialCommandNotation(command: string | null): string {
     .replace(/\bMK\b/g, '中K')
     .replace(/\bHK\b/g, '強K')
     .replace(/\bM攻\b/g, '攻撃')
+    .replace(/\bM(?=[弱中強])/g, '')
+    .replace(/\b[a-z]+T\d+\b/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -437,6 +440,15 @@ function parseCharacterNameFromFrameHtml(html: string): string | null {
 }
 
 async function fetchOfficialText(path: string): Promise<string> {
+  const cached = officialTextCache.get(path);
+  if (cached) return cached;
+
+  const request = fetchOfficialTextUncached(path);
+  officialTextCache.set(path, request);
+  return request;
+}
+
+async function fetchOfficialTextUncached(path: string): Promise<string> {
   const response = await fetch(`${SF6_OFFICIAL_PROXY_BASE}${path}`);
   if (!response.ok) {
     throw new Error(`公式サイト取得に失敗しました (${response.status})`);

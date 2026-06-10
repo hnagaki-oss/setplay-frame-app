@@ -255,11 +255,32 @@ export async function importAvailableOfficialTargetsForGame(game: Game): Promise
   const addedCharacters = roster
     ? await ensureGameCharacterNames(game, roster.characters.map((character) => character.name))
     : await ensureGameCharacterRoster(game);
-  const gameTargets = OFFICIAL_IMPORT_TARGETS.filter((target) => target.meta.gameId === game.id);
   const imported: OfficialImportResult[] = [];
 
-  for (const target of gameTargets) {
-    imported.push(await importOfficialTargetIfChanged(target));
+  if (game.id === 'sf6' && roster) {
+    const supportedControlTypes = game.controlTypes.filter((controlType) =>
+      controlType.id === 'sf6_classic' || controlType.id === 'sf6_modern'
+    );
+
+    for (const character of roster.characters) {
+      for (const controlType of supportedControlTypes) {
+        try {
+          const target = await resolveOfficialImportTarget(game.id, controlType.id, character.name, character);
+          if (!target) {
+            imported.push({ status: 'unavailable', importedCount: 0, label: `${character.name} ${controlType.name}` });
+            continue;
+          }
+          imported.push(await importOfficialTargetIfChanged(target));
+        } catch {
+          imported.push({ status: 'unavailable', importedCount: 0, label: `${character.name} ${controlType.name}` });
+        }
+      }
+    }
+  } else {
+    const gameTargets = OFFICIAL_IMPORT_TARGETS.filter((target) => target.meta.gameId === game.id);
+    for (const target of gameTargets) {
+      imported.push(await importOfficialTargetIfChanged(target));
+    }
   }
 
   return {
@@ -291,7 +312,8 @@ function hasOfficialMoveDiff(currentMoves: Move[], seedMoves: OfficialSeedMove[]
 async function resolveOfficialImportTarget(
   gameId: GameId,
   controlTypeId: ControlTypeId,
-  characterName: string
+  characterName: string,
+  knownOfficialCharacter?: Sf6OfficialCharacter
 ): Promise<OfficialImportTarget | null> {
   const staticTarget = getOfficialImportTarget(gameId, controlTypeId, characterName);
   if (staticTarget) return staticTarget;
@@ -300,8 +322,7 @@ async function resolveOfficialImportTarget(
     return null;
   }
 
-  const roster = await fetchSf6OfficialRoster();
-  const officialCharacter = findOfficialCharacterByName(roster.characters, characterName);
+  const officialCharacter = knownOfficialCharacter ?? findOfficialCharacterByName((await fetchSf6OfficialRoster()).characters, characterName);
   if (!officialCharacter) return null;
 
   const frameData = await fetchSf6OfficialFrameData(officialCharacter, controlTypeId);
