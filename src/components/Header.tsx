@@ -21,7 +21,10 @@ export function Header({
 
   return (
     <header className="header">
-      <div className="header-title">🎮 セットプレイ検索</div>
+      <div className="header-title">
+        <span className="header-title-icon" aria-hidden="true">🎮</span>
+        <span className="header-title-text">セットプレイ検索</span>
+      </div>
 
       <nav className="breadcrumb">
         <button
@@ -57,7 +60,9 @@ export function Header({
       </nav>
 
       <button className="settings-btn" onClick={onClickSettings} title="プリセット設定">
-        ⚙️ プリセット設定
+        <span aria-hidden="true">⚙️</span>
+        <span className="settings-label-full">プリセット設定</span>
+        <span className="settings-label-short">設定</span>
       </button>
       <span className="app-version">v{APP_VERSION}</span>
     </header>
