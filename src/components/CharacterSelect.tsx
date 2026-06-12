@@ -121,11 +121,14 @@ function CharacterCard({ char, gameId, onSelect, onEdited, showToast }: {
   const initial = [...char.name][0] ?? '?';
   const iconCandidates = localIconCandidates(gameId, char.name);
   const iconSrc = iconIndex < iconCandidates.length ? iconCandidates[iconIndex] : null;
-  const avatarStyle = gameId === 'sf6' && iconSrc ? undefined : { backgroundColor: color };
+  const usesGameTile =
+    iconSrc && (gameId === 'sf6' || gameId === 'fatal_fury_cotw');
+  const avatarStyle = usesGameTile ? undefined : { backgroundColor: color };
   const cardClassName = [
     'char-card',
     iconSrc ? 'char-card-has-icon' : '',
     gameId === 'sf6' && iconSrc ? 'char-card-sf6' : '',
+    gameId === 'fatal_fury_cotw' && iconSrc ? 'char-card-cotw' : '',
   ].filter(Boolean).join(' ');
 
   const handleSaveEdit = async () => {

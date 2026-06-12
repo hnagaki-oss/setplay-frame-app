@@ -490,6 +490,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   gap: 0.65rem;
 }
 
+.char-select-view[data-game-id="fatal_fury_cotw"] .char-grid {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.65rem;
+}
+
 .char-card {
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid var(--border);
@@ -620,6 +625,65 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   border-left-color: rgba(236, 72, 153, 0.2);
 }
 
+.char-card-cotw {
+  background: #030908;
+  border-color: rgba(20, 184, 166, 0.28);
+}
+
+.char-card-cotw:hover {
+  border-color: rgba(20, 184, 166, 0.72);
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.24);
+}
+
+.char-card-cotw .char-card-main {
+  align-items: stretch;
+  background: linear-gradient(180deg, #061716 0%, #020504 100%);
+}
+
+.char-card-cotw .char-card-main:hover {
+  background: linear-gradient(180deg, #08201e 0%, #030908 100%);
+}
+
+.char-card-cotw .char-avatar {
+  aspect-ratio: 277 / 721;
+  border-bottom: 0;
+  background-color: #030908;
+  background-image: linear-gradient(135deg, #082b28 0%, #020504 100%);
+}
+
+.char-card-cotw .char-avatar-img {
+  object-fit: cover;
+}
+
+.char-card-cotw .char-card-name {
+  min-height: 2.1rem;
+  padding: 0.36rem 0.28rem 0.32rem;
+  color: #f8fafc;
+  background: #020504;
+  border-top: 1px solid rgba(20, 184, 166, 0.2);
+  font-size: 0.68rem;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+}
+
+.char-card-cotw .char-card-actions {
+  border-top-color: rgba(20, 184, 166, 0.2);
+  background: rgba(2, 5, 4, 0.96);
+}
+
+.char-card-cotw .char-action-btn {
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.char-card-cotw .char-action-btn:hover {
+  background: rgba(20, 184, 166, 0.16);
+  color: #ffffff;
+}
+
+.char-card-cotw .char-action-btn + .char-action-btn {
+  border-left-color: rgba(20, 184, 166, 0.2);
+}
+
 .char-card-name {
   min-height: 2.6rem;
   display: flex;
@@ -669,6 +733,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   }
   .char-select-view[data-game-id="sf6"] .char-grid {
     grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  }
+  .char-select-view[data-game-id="fatal_fury_cotw"] .char-grid {
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
   }
 }
 
