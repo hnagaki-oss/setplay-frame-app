@@ -22,6 +22,7 @@ coverage
 .claude
 .codex
 .tmp*
+sf6_app_server.pid
 migration-backups/
 public/local-character-icons/*/_cache_candidates/
 data/

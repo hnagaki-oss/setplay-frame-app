@@ -463,6 +463,156 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   justify-content: center;
   margin: -0.5rem 0 1.25rem;
 }
+
+.game-select-view {
+  min-height: calc(100vh - 8rem);
+  display: grid;
+  place-items: center;
+  padding: 3.5rem 1rem 4.25rem;
+}
+
+.game-select-shell {
+  width: min(100%, 820px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.game-select-brand {
+  margin: 0;
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.game-select-title {
+  margin-bottom: 0.2rem;
+}
+
+.game-select-grid {
+  width: 100%;
+  max-width: 760px;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.game-select-card {
+  position: relative;
+  min-height: 204px;
+  justify-content: center;
+  gap: 0.85rem;
+  overflow: hidden;
+  border-radius: var(--radius);
+  padding: 1rem;
+  color: #fff;
+  border-color: rgba(255,255,255,0.16);
+  box-shadow: 0 18px 42px -28px rgba(15, 23, 42, 0.85);
+}
+
+.game-select-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 34%),
+    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0));
+  pointer-events: none;
+}
+
+.game-select-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 4px;
+  background: rgba(255,255,255,0.28);
+}
+
+.game-select-card:hover {
+  border-color: rgba(255,255,255,0.45);
+  box-shadow: 0 24px 48px -28px rgba(15, 23, 42, 0.95);
+  transform: translateY(-2px);
+}
+
+.game-select-card-sf6 {
+  background: linear-gradient(135deg, #101426 0%, #25143b 54%, #6d241e 100%);
+}
+
+.game-select-card-sf6:hover {
+  background: linear-gradient(135deg, #141b32 0%, #301a4c 54%, #7a2b24 100%);
+}
+
+.game-select-card-sf6::after {
+  background: linear-gradient(90deg, #3b82f6, #f59e0b, #ef4444);
+}
+
+.game-select-card-cotw {
+  background: linear-gradient(135deg, #020504 0%, #082b28 58%, #5a4213 100%);
+}
+
+.game-select-card-cotw:hover {
+  background: linear-gradient(135deg, #030807 0%, #0b3834 58%, #674d17 100%);
+}
+
+.game-select-card-cotw::after {
+  background: linear-gradient(90deg, #14b8a6, #facc15, #ffffff);
+}
+
+.game-select-logo-wrap,
+.game-select-card-name {
+  position: relative;
+  z-index: 1;
+}
+
+.game-select-logo-wrap {
+  width: 100%;
+  height: 124px;
+  min-height: 124px;
+  display: grid;
+  place-items: center;
+  padding: 0.25rem 0.2rem;
+}
+
+.game-select-logo {
+  display: block;
+  width: auto;
+  max-width: 84%;
+  max-height: 92px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 12px rgba(0,0,0,0.46));
+}
+
+.game-select-card-sf6 .game-select-logo {
+  max-width: 80%;
+  max-height: 56px;
+  transform: translateY(3px);
+}
+
+.game-select-card-cotw .game-select-logo {
+  max-width: 72%;
+  max-height: 132px;
+  transform: translateY(2px);
+}
+
+.game-select-card-name {
+  min-height: 2rem;
+  width: 100%;
+  color: rgba(255,255,255,0.94);
+  font-size: 0.92rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+}
+
+.game-select-actions {
+  margin: 0.8rem 0 0;
+}
+
+.game-select-data-button {
+  background: rgba(255,255,255,0.92);
+  border-color: rgba(31, 94, 255, 0.32);
+  box-shadow: var(--shadow);
+}
 .standalone-data-view {
   max-width: 980px;
   margin: 0 auto;
@@ -1433,6 +1583,21 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   .frame-inputs { grid-template-columns: 1fr; }
   .override-grid { grid-template-columns: 1fr; }
   .tab-btn { font-size: 0.82rem; padding: 0.6rem 0.6rem; }
+  .game-select-view {
+    min-height: auto;
+    padding: 2rem 0.25rem 3rem;
+  }
+  .game-select-grid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+  .game-select-card {
+    min-height: 188px;
+  }
+  .game-select-logo-wrap {
+    height: 104px;
+    min-height: 104px;
+  }
   .select-grid { grid-template-columns: 1fr; }
   .register-bar { flex-direction: column; align-items: stretch; text-align: center; }
 }
