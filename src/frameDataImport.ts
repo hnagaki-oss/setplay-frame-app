@@ -2,10 +2,12 @@ import type { MoveCategory } from './types';
 
 export interface OfficialFrameMoveSource {
   name: string;
+  displayName?: string;
   officialCategory: string;
   startupText: string;
   activeText: string;
   recoveryText: string;
+  totalFrameText?: string;
   activeDetailText?: string;
   note?: string;
   inputText?: string;
@@ -65,11 +67,14 @@ export function parseOfficialFrameMove(move: OfficialFrameMoveSource): ParsedOff
     startupFrames !== null && surfaceActive.activeStartFrames !== null && surfaceActive.activeFrames !== null && recoveryFrames !== null
       ? startupFrames + (surfaceActive.activeFrames - surfaceActive.activeStartFrames + 1) + recoveryFrames - 1
       : null;
+  const officialTotalFrames = move.totalFrameText?.trim()
+    ? parseStrictInteger(move.totalFrameText) ?? parseTotalFramesFromText(move.totalFrameText)
+    : null;
   const notedTotalFrames = parseTotalFramesFromText(`${move.recoveryText} ${move.note ?? ''}`);
-  const totalFrames = calculatedTotalFrames ?? notedTotalFrames;
+  const totalFrames = officialTotalFrames ?? calculatedTotalFrames ?? notedTotalFrames;
 
   return {
-    name: buildOfficialMoveName(move, category),
+    name: move.displayName?.trim() || buildOfficialMoveName(move, category),
     category,
     startupFrames,
     activeStartFrames: finalActive.activeStartFrames,
@@ -143,6 +148,10 @@ function buildOfficialFrameMemo(move: OfficialFrameMoveSource): string {
     parts.push(`公式コマンド: ${move.commandText.trim()}`);
   }
 
+  if (move.displayName?.trim() && move.displayName.trim() !== move.name.trim()) {
+    parts.push(`公式技名: ${move.name.trim()}`);
+  }
+
   parts.push(
     `公式発生: ${move.startupText || '-'}`,
     `公式持続: ${move.activeText || '-'}`
@@ -153,6 +162,10 @@ function buildOfficialFrameMemo(move: OfficialFrameMoveSource): string {
   }
 
   parts.push(`硬直: ${move.recoveryText || '-'}`);
+
+  if (move.totalFrameText?.trim()) {
+    parts.push(`公式全体: ${move.totalFrameText.trim()}`);
+  }
 
   if (move.note?.trim()) {
     const frameNotes = extractFrameRelatedNotes(move.note);
