@@ -87,8 +87,8 @@ const SF6_FRAME_TYPE_CATEGORY: Record<string, string> = {
 
 const SF6_FRAME_WEB_ID_CATEGORY: Array<[number, string]> = [
   [100, '通常技'],
-  [200, '必殺技'],
-  [300, '特殊技'],
+  [200, '特殊技'],
+  [300, '必殺技'],
   [400, 'スーパーアーツ'],
   [500, '通常投げ'],
   [600, '共通システム'],

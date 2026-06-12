@@ -1,5 +1,5 @@
 /** アプリバージョン（package.json と合わせて管理） */
-export const APP_VERSION = '1.0.9';
+export const APP_VERSION = '1.0.10';
 
 /** IndexedDB スキーマバージョン（db.ts の最新 version() 番号と一致させる） */
 export const DB_SCHEMA_VERSION = 3;
