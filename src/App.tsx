@@ -16,6 +16,7 @@ import { SetplayDetail } from './components/SetplayDetail';
 import { DataManager } from './components/DataManager';
 import { SettingsModal } from './components/SettingsModal';
 import { withAutoTagsForMoveName } from './moveTags';
+import { applyPublicSeedIfEmpty } from './publicSeed';
 import {
   ensureCharacterForControlType,
   cleanupSf6ClassicCommandlessOfficialMoves,
@@ -125,12 +126,32 @@ export default function App() {
     setToasts((prev) => [...prev, { id, message, type }]);
   }, []);
 
-  // 起動時マイグレーション（一度だけ実行）
+  // 起動時の公開初期データ投入とマイグレーション（一度だけ実行）
   useEffect(() => {
-    migrateCopyClassicToModern();
-    migrateCloseRangeMoveTags();
-    cleanupSf6ClassicCommandlessOfficialMoves();
-  }, []);
+    let cancelled = false;
+
+    async function runStartupTasks() {
+      const seedResult = await applyPublicSeedIfEmpty();
+      if (!cancelled && seedResult.status === 'applied') {
+        showToast(
+          `初期データを読み込みました：キャラ${seedResult.counts.characters}件、技${seedResult.counts.moves}件、セットプレイ${seedResult.counts.setplays}件`,
+          'success'
+        );
+      } else if (!cancelled && seedResult.status === 'unavailable' && seedResult.reason !== 'not-found') {
+        showToast('公開初期データの読み込みに失敗しました。データ管理から手動インポートしてください。', 'error');
+      }
+
+      await migrateCopyClassicToModern();
+      await migrateCloseRangeMoveTags();
+      await cleanupSf6ClassicCommandlessOfficialMoves();
+    }
+
+    void runStartupTasks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showToast]);
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
