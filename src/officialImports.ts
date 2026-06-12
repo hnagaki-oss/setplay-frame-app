@@ -178,6 +178,7 @@ export async function importOfficialTargetIfChanged(
         controlTypeId: target.meta.controlTypeId,
         characterId: character.id,
         entryType: 'preset',
+        displayOrder: index,
         tags: withAutoTagsForMoveName(move.name, []),
         createdAt: timestamp,
         updatedAt: timestamp,

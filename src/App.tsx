@@ -37,13 +37,14 @@ async function seedMovesForCharacter(game: Game, controlType: ControlType, chara
   if (moveCount > 0) return;
 
   const timestamp = now();
-  const moves: Move[] = preset.moves.map((p) => ({
+  const moves: Move[] = preset.moves.map((p, index) => ({
     id: genUUID(),
     gameId: game.id,
     controlTypeId: controlType.id,
     characterId: character.id,
     name: p.name,
     category: p.category,
+    displayOrder: index,
     entryType: 'preset' as const,
     totalFrames: null,
     startupFrames: null,

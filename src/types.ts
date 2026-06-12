@@ -36,6 +36,8 @@ export interface Move {
   characterId: string;
   name: string;
   category: MoveCategory;
+  /** 技データ管理での表示順。未設定の古いデータはプリセット順/作成順で補完する。 */
+  displayOrder?: number;
   entryType: 'preset' | 'added';
   totalFrames: number | null;
   startupFrames: number | null;

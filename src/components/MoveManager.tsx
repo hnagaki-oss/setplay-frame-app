@@ -1,9 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type DragEvent } from 'react';
 import { db } from '../db';
 import type { Move, MoveCategory, Character } from '../types';
 import { ALL_MOVE_CATEGORIES, MOVE_CATEGORY_NAMES, INITIAL_TAGS, CLOSE_RANGE_TAG } from '../constants';
 import { genUUID, now } from '../utils';
 import { withAutoTagsForMoveName } from '../moveTags';
+import {
+  buildDisplayOrderMap,
+  getNextDisplayOrder,
+  sortMovesByRegisteredOrder,
+} from '../moveOrder';
 
 interface Props {
   character: Character;
@@ -17,6 +22,15 @@ type ModalFormData = {
   tags: string[];
   memo: string;
   enabled: boolean;
+};
+
+type DragInsertPosition = 'before' | 'after';
+
+type MoveDragState = {
+  moveId: string;
+  category: MoveCategory;
+  overMoveId: string | null;
+  insertPosition: DragInsertPosition;
 };
 
 const DEFAULT_FORM = (): ModalFormData => ({
@@ -73,21 +87,55 @@ function FrameInput({
 // ---- 1行の技コンポーネント ----
 function MoveRow({
   move,
+  dragState,
   onFrameUpdate,
   onToggleEnabled,
   onOpenDetail,
   onDeleteRequest,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   move: Move;
+  dragState: MoveDragState | null;
   onFrameUpdate: (id: string, patch: Partial<Pick<Move, 'startupFrames' | 'activeStartFrames' | 'activeFrames' | 'totalFrames'>>) => void;
   onToggleEnabled: (move: Move) => void;
   onOpenDetail: (move: Move) => void;
   onDeleteRequest: (id: string) => void;
+  onDragStart: (move: Move, event: DragEvent<HTMLButtonElement>) => void;
+  onDragOver: (move: Move, event: DragEvent<HTMLDivElement>) => void;
+  onDrop: (move: Move, event: DragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
 }) {
   const memoPreview = getMoveMemoPreview(move.memo);
+  const isDragging = dragState?.moveId === move.id;
+  const isDropTarget = dragState?.overMoveId === move.id && dragState.moveId !== move.id;
+  const rowClassName = [
+    'move-row',
+    !move.enabled ? 'move-disabled' : '',
+    isDragging ? 'move-row-dragging' : '',
+    isDropTarget ? `move-row-drop-${dragState?.insertPosition}` : '',
+  ].filter(Boolean).join(' ');
 
   return (
-    <div className={`move-row ${!move.enabled ? 'move-disabled' : ''}`}>
+    <div
+      className={rowClassName}
+      onDragOver={(event) => onDragOver(move, event)}
+      onDrop={(event) => onDrop(move, event)}
+    >
+      <button
+        type="button"
+        className="move-drag-handle"
+        draggable
+        title="同じカテゴリ内で並び替え"
+        aria-label={`${move.name}を並び替え`}
+        onDragStart={(event) => onDragStart(move, event)}
+        onDragEnd={onDragEnd}
+      >
+        <span aria-hidden="true">⋮⋮</span>
+      </button>
+
       {/* 技名 */}
       <div className="move-row-name">
         <span className="move-name">{move.name}</span>
@@ -167,6 +215,7 @@ export function MoveManager({ character, showToast }: Props) {
   const [addCategory, setAddCategory] = useState<MoveCategory>('normal');
   const [formData, setFormData] = useState<ModalFormData>(DEFAULT_FORM());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [dragState, setDragState] = useState<MoveDragState | null>(null);
 
   // ---- DB操作 ----
   const load = useCallback(async () => {
@@ -182,25 +231,7 @@ export function MoveManager({ character, showToast }: Props) {
     if (preset?.tags?.length) setAvailableTags(withCloseRangeTagOption(preset.tags));
     else setAvailableTags(INITIAL_TAGS);
 
-    const compareByCreatedAt = (a: Move, b: Move) =>
-      a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name, 'ja');
-
-    // プリセット順にソート。プリセット順がないデータは投入順を維持する。
-    if (preset && preset.moves.length > 0) {
-      const presetMoves = preset.moves;
-      ms.sort((a, b) => {
-        const ia = presetMoves.findIndex((p) => p.name === a.name && p.category === a.category);
-        const ib = presetMoves.findIndex((p) => p.name === b.name && p.category === b.category);
-        if (ia === -1 && ib === -1) return compareByCreatedAt(a, b);
-        if (ia === -1) return 1;
-        if (ib === -1) return -1;
-        return ia - ib;
-      });
-    } else {
-      ms.sort(compareByCreatedAt);
-    }
-
-    setMoves(ms);
+    setMoves(sortMovesByRegisteredOrder(ms, preset?.moves));
   }, [character.gameId, character.controlTypeId, character.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -227,6 +258,85 @@ export function MoveManager({ character, showToast }: Props) {
     showToast(`「${move?.name}」を削除しました`, 'info');
     setMoves((prev) => prev.filter((m) => m.id !== id));
   };
+
+  const handleMoveDragStart = useCallback((move: Move, event: DragEvent<HTMLButtonElement>) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', move.id);
+    setDragState({
+      moveId: move.id,
+      category: move.category,
+      overMoveId: null,
+      insertPosition: 'after',
+    });
+  }, []);
+
+  const handleMoveDragOver = useCallback((move: Move, event: DragEvent<HTMLDivElement>) => {
+    if (!dragState || dragState.category !== move.category || dragState.moveId === move.id) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const rect = event.currentTarget.getBoundingClientRect();
+    const insertPosition: DragInsertPosition =
+      event.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+
+    setDragState((prev) => {
+      if (!prev) return prev;
+      if (prev.overMoveId === move.id && prev.insertPosition === insertPosition) return prev;
+      return { ...prev, overMoveId: move.id, insertPosition };
+    });
+  }, [dragState]);
+
+  const handleMoveDragEnd = useCallback(() => {
+    setDragState(null);
+  }, []);
+
+  const handleMoveDrop = useCallback(async (targetMove: Move, event: DragEvent<HTMLDivElement>) => {
+    if (!dragState || dragState.category !== targetMove.category || dragState.moveId === targetMove.id) return;
+
+    event.preventDefault();
+    const sourceMove = moves.find((move) => move.id === dragState.moveId);
+    if (!sourceMove || sourceMove.category !== targetMove.category) {
+      setDragState(null);
+      return;
+    }
+
+    const categoryMoves = moves.filter((move) => move.category === sourceMove.category);
+    const reorderedCategoryMoves = categoryMoves.filter((move) => move.id !== sourceMove.id);
+    const targetIndex = reorderedCategoryMoves.findIndex((move) => move.id === targetMove.id);
+    if (targetIndex === -1) {
+      setDragState(null);
+      return;
+    }
+
+    const insertIndex = dragState.insertPosition === 'before' ? targetIndex : targetIndex + 1;
+    reorderedCategoryMoves.splice(insertIndex, 0, sourceMove);
+
+    const beforeOrder = categoryMoves.map((move) => move.id).join('\n');
+    const afterOrder = reorderedCategoryMoves.map((move) => move.id).join('\n');
+    if (beforeOrder === afterOrder) {
+      setDragState(null);
+      return;
+    }
+
+    const orderedMoves = ALL_MOVE_CATEGORIES.flatMap((category) =>
+      category === sourceMove.category
+        ? reorderedCategoryMoves
+        : moves.filter((move) => move.category === category)
+    );
+    const displayOrderMap = buildDisplayOrderMap(orderedMoves);
+    const timestamp = now();
+    const nextMoves = orderedMoves.map((move) => {
+      const displayOrder = displayOrderMap.get(move.id) ?? move.displayOrder;
+      return displayOrder === move.displayOrder
+        ? move
+        : { ...move, displayOrder, updatedAt: timestamp };
+    });
+
+    await db.moves.bulkPut(nextMoves);
+    setMoves(nextMoves);
+    setDragState(null);
+    showToast('技の並び順を更新しました', 'success');
+  }, [dragState, moves, showToast]);
 
   const toggleCat = (cat: MoveCategory) => {
     setCollapsedCats((prev) => {
@@ -268,6 +378,7 @@ export function MoveManager({ character, showToast }: Props) {
         characterId: character.id,
         ...formData,
         name: moveName,
+        displayOrder: getNextDisplayOrder(moves),
         tags: moveTags,
         memo: formData.memo.trim(),
         entryType: 'added',
@@ -280,12 +391,23 @@ export function MoveManager({ character, showToast }: Props) {
       };
       await db.moves.add(move);
       showToast(`「${move.name}」を追加しました`, 'success');
-      setMoves((prev) => [...prev, move]);
+      setMoves((prev) => sortMovesByRegisteredOrder([...prev, move]));
     } else if (detailMove) {
-      const patch = { name: moveName, category: formData.category, tags: moveTags, memo: formData.memo.trim(), enabled: formData.enabled, updatedAt: now() };
+      const categoryChanged = detailMove.category !== formData.category;
+      const patch = {
+        name: moveName,
+        category: formData.category,
+        displayOrder: categoryChanged ? getNextDisplayOrder(moves) : detailMove.displayOrder,
+        tags: moveTags,
+        memo: formData.memo.trim(),
+        enabled: formData.enabled,
+        updatedAt: now(),
+      };
       await db.moves.update(detailMove.id, patch);
       showToast(`「${moveName}」を更新しました`, 'success');
-      setMoves((prev) => prev.map((m) => m.id === detailMove.id ? { ...m, ...patch } : m));
+      setMoves((prev) => sortMovesByRegisteredOrder(
+        prev.map((m) => m.id === detailMove.id ? { ...m, ...patch } : m)
+      ));
     }
     closeModal();
   };
@@ -376,6 +498,7 @@ export function MoveManager({ character, showToast }: Props) {
               <div className="category-body">
                 {catMoves.length > 0 && (
                   <div className="move-table-header">
+                    <span className="col-drag"></span>
                     <span className="col-name">技名</span>
                     <span className="col-frame">発生F</span>
                     <span className="col-frame">最終段開始F</span>
@@ -400,10 +523,15 @@ export function MoveManager({ character, showToast }: Props) {
                     <MoveRow
                       key={move.id}
                       move={move}
+                      dragState={dragState}
                       onFrameUpdate={handleFrameUpdate}
                       onToggleEnabled={handleToggleEnabled}
                       onOpenDetail={openDetail}
                       onDeleteRequest={setDeleteConfirmId}
+                      onDragStart={handleMoveDragStart}
+                      onDragOver={handleMoveDragOver}
+                      onDrop={handleMoveDrop}
+                      onDragEnd={handleMoveDragEnd}
                     />
                   )
                 ))}

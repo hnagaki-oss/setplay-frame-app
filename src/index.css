@@ -1181,7 +1181,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 /* テーブルヘッダー */
 .move-table-header {
   display: grid;
-  grid-template-columns: 1fr 72px 92px 82px 90px auto;
+  grid-template-columns: 28px minmax(0, 1fr) 72px 92px 82px 90px auto;
   align-items: center;
   padding: 0.35rem 1rem;
   background: var(--bg);
@@ -1191,6 +1191,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   color: var(--text-muted);
   gap: 0.5rem;
 }
+.col-drag { width: 28px; }
 .col-name {}
 .col-frame { text-align: center; }
 .col-frame-total { text-align: center; color: var(--primary); }
@@ -1200,16 +1201,60 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 /* 技行（インライン編集） */
 .move-row {
   display: grid;
-  grid-template-columns: 1fr 72px 92px 82px 90px auto;
+  grid-template-columns: 28px minmax(0, 1fr) 72px 92px 82px 90px auto;
   align-items: center;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
   gap: 0.5rem;
   transition: background 0.1s;
+  position: relative;
 }
 .move-row:hover { background: var(--bg); }
 .move-row:last-of-type { border-bottom: none; }
 .move-disabled { opacity: 0.55; }
+.move-row-dragging {
+  opacity: 0.42;
+  background: var(--primary-light);
+}
+.move-row-drop-before::before,
+.move-row-drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+  z-index: 1;
+}
+.move-row-drop-before::before { top: 0; }
+.move-row-drop-after::after { bottom: 0; }
+
+.move-drag-handle {
+  width: 24px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  line-height: 1;
+  font-size: 1rem;
+  padding: 0;
+  touch-action: none;
+}
+.move-drag-handle:hover,
+.move-drag-handle:focus-visible {
+  color: var(--primary);
+  background: var(--primary-light);
+  border-color: rgba(37,99,235,0.2);
+  outline: none;
+}
+.move-drag-handle:active { cursor: grabbing; }
 
 .move-row-name {
   display: flex;
@@ -1271,8 +1316,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 .btn-add-move:hover { background: var(--primary-light); }
 
 @media (max-width: 600px) {
-  .move-table-header { grid-template-columns: 1fr 54px 72px 64px 70px auto; padding: 0.35rem 0.5rem; }
-  .move-row { grid-template-columns: 1fr 54px 72px 64px 70px auto; padding: 0.5rem 0.5rem; }
+  .move-table-header { grid-template-columns: 24px minmax(0, 1fr) 54px 72px 64px 70px auto; padding: 0.35rem 0.5rem; }
+  .move-row { grid-template-columns: 24px minmax(0, 1fr) 54px 72px 64px 70px auto; padding: 0.5rem 0.5rem; }
+  .move-drag-handle { width: 22px; }
   .move-row-actions { gap: 0.2rem; }
 }
 

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
-import type { Move, MoveCategory, Character, SearchCondition, SearchResult, SearchSessionOverride, SearchDefaults, Starter, PresetMove } from '../types';
+import type { Move, MoveCategory, Character, SearchCondition, SearchResult, SearchSessionOverride, SearchDefaults, Starter } from '../types';
 import { ALL_MOVE_CATEGORIES, MOVE_CATEGORY_NAMES, INITIAL_TAGS } from '../constants';
 import { search } from '../search';
+import { MOVE_CATEGORY_SORT_ORDER, sortMovesByRegisteredOrder } from '../moveOrder';
 
 interface Props {
   character: Character;
@@ -30,26 +31,6 @@ const hasMeatyFrameInput = (move: Move | null | undefined): move is MeatySelecta
   move?.startupFrames !== undefined &&
   move.activeFrames !== null &&
   move.activeFrames !== undefined;
-
-const MOVE_CATEGORY_SORT_ORDER = new Map(ALL_MOVE_CATEGORIES.map((category, index) => [category, index]));
-
-function compareByRegisteredOrder(a: Move, b: Move): number {
-  return a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name, 'ja');
-}
-
-function sortMovesByRegisteredOrder(moves: Move[], presetMoves: PresetMove[] = []): Move[] {
-  const sorted = [...moves];
-  if (presetMoves.length === 0) return sorted.sort(compareByRegisteredOrder);
-
-  return sorted.sort((a, b) => {
-    const ia = presetMoves.findIndex((p) => p.name === a.name && p.category === a.category);
-    const ib = presetMoves.findIndex((p) => p.name === b.name && p.category === b.category);
-    if (ia === -1 && ib === -1) return compareByRegisteredOrder(a, b);
-    if (ia === -1) return 1;
-    if (ib === -1) return -1;
-    return ia - ib;
-  });
-}
 
 function sortMovesForOverride(moves: Move[]): Move[] {
   return moves

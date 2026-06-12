@@ -200,6 +200,7 @@ export function DataManager({ showToast }: Props) {
           controlTypeId: meta.controlTypeId,
           characterId: character.id,
           entryType: 'preset',
+          displayOrder: index,
           tags: withAutoTagsForMoveName(move.name, []),
           createdAt: timestamp,
           updatedAt: timestamp,
