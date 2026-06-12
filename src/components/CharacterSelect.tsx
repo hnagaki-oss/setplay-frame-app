@@ -23,6 +23,38 @@ const AVATAR_PALETTE = [
   '#6366f1', '#f97316', '#84cc16', '#0ea5e9',
 ];
 const LOCAL_ICON_EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'];
+const SF6_LOCAL_ICON_SLUG_BY_NAME: Record<string, string> = {
+  'リュウ': 'ryu',
+  'ルーク': 'luke',
+  'ジェイミー': 'jamie',
+  '春麗': 'chunli',
+  'ガイル': 'guile',
+  'キンバリー': 'kimberly',
+  'ジュリ': 'juri',
+  'ケン': 'ken',
+  'ブランカ': 'blanka',
+  'ダルシム': 'dhalsim',
+  'エドモンド本田': 'ehonda',
+  'ディージェイ': 'deejay',
+  'マノン': 'manon',
+  'マリーザ': 'marisa',
+  'JP': 'jp',
+  'ザンギエフ': 'zangief',
+  'リリー': 'lily',
+  'キャミィ': 'cammy',
+  'ラシード': 'rashid',
+  'A.K.I.': 'aki',
+  'エド': 'ed',
+  '豪鬼': 'gouki_akuma',
+  'ベガ': 'vega_mbison',
+  'テリー': 'terry',
+  '舞': 'mai',
+  'エレナ': 'elena',
+  'サガット': 'sagat',
+  'C.ヴァイパー': 'cviper',
+  'アレックス': 'alex',
+  'イングリッド': 'ingrid',
+};
 
 function avatarColor(name: string): string {
   let h = 0;
@@ -32,8 +64,11 @@ function avatarColor(name: string): string {
 
 function localIconCandidates(gameId: string, name: string): string[] {
   const encodedName = encodeURIComponent(name);
-  return LOCAL_ICON_EXTENSIONS.map((ext) =>
-    `/local-character-icons/${gameId}/${encodedName}.${ext}`
+  const fileNames = gameId === 'sf6' && SF6_LOCAL_ICON_SLUG_BY_NAME[name]
+    ? [SF6_LOCAL_ICON_SLUG_BY_NAME[name], encodedName]
+    : [encodedName];
+  return fileNames.flatMap((fileName) =>
+    LOCAL_ICON_EXTENSIONS.map((ext) => `/local-character-icons/${gameId}/${fileName}.${ext}`)
   );
 }
 
