@@ -55,6 +55,35 @@ const SF6_LOCAL_ICON_SLUG_BY_NAME: Record<string, string> = {
   'アレックス': 'alex',
   'イングリッド': 'ingrid',
 };
+const COTW_LOCAL_ICON_SLUG_BY_NAME: Record<string, string> = {
+  'ロック・ハワード': 'rock',
+  'テリー・ボガード': 'terry',
+  'B.ジェニー': 'janet',
+  'マルコ・ロドリゲス': 'marco',
+  'プリチャ': 'preecha',
+  '双葉ほたる': 'hotaru',
+  'ボックス・リーパー': 'vox',
+  'グリフォンマスク': 'tizoc',
+  'ケビン・ライアン': 'kevin',
+  'ビリー・カーン': 'billy',
+  '不知火舞': 'mai',
+  'キム・ドンファン': 'donghwan',
+  '牙刀': 'gato',
+  'カイン・R・ハインライン': 'kain',
+  'クリスティアーノ・ロナウド': 'cr7',
+  'サルバトーレ・ガナッチ': 'ganacci',
+  '北斗丸': 'hokutomaru',
+  'アンディ・ボガード': 'andy',
+  'ケン・マスターズ': 'ken',
+  'ジョー・ヒガシ': 'joe',
+  '春麗': 'chun-li',
+  'Mr.ビッグ': 'mrbig',
+  'キム・ジェイフン': 'jaehoon',
+  'ナイトメアギース': 'geese',
+  'ブルー・マリー': 'bluemary',
+  'ヴォルフガング・クラウザー': 'krauser',
+  'Mr.KARATE': 'karate',
+};
 
 function avatarColor(name: string): string {
   let h = 0;
@@ -64,9 +93,13 @@ function avatarColor(name: string): string {
 
 function localIconCandidates(gameId: string, name: string): string[] {
   const encodedName = encodeURIComponent(name);
-  const fileNames = gameId === 'sf6' && SF6_LOCAL_ICON_SLUG_BY_NAME[name]
-    ? [SF6_LOCAL_ICON_SLUG_BY_NAME[name], encodedName]
-    : [encodedName];
+  const localSlug =
+    gameId === 'sf6'
+      ? SF6_LOCAL_ICON_SLUG_BY_NAME[name]
+      : gameId === 'fatal_fury_cotw'
+        ? COTW_LOCAL_ICON_SLUG_BY_NAME[name]
+        : null;
+  const fileNames = localSlug ? [localSlug, encodedName] : [encodedName];
   return fileNames.flatMap((fileName) =>
     LOCAL_ICON_EXTENSIONS.map((ext) => `/local-character-icons/${gameId}/${fileName}.${ext}`)
   );
