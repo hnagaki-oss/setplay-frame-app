@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../db';
 import type { Preset, PresetMove, MoveCategory, SearchDefaults, Game, ControlType } from '../types';
-import { ALL_MOVE_CATEGORIES, MOVE_CATEGORY_NAMES, INITIAL_PRESETS, DEFAULT_SEARCH_DEFAULTS, INITIAL_TAGS } from '../constants';
+import { ALL_MOVE_CATEGORIES, MOVE_CATEGORY_NAMES, INITIAL_PRESETS, DEFAULT_SEARCH_DEFAULTS, INITIAL_TAGS, CLOSE_RANGE_TAG } from '../constants';
 import { now } from '../utils';
 
 interface Props {
@@ -13,6 +13,10 @@ interface Props {
 
 function presetId(gameId: string, controlTypeId: string) {
   return `${gameId}_${controlTypeId}`;
+}
+
+function withCloseRangeTagOption(tags: string[]): string[] {
+  return tags.includes(CLOSE_RANGE_TAG) ? tags : [CLOSE_RANGE_TAG, ...tags];
 }
 
 export function PresetConfig({ game, controlType, onSaved, showToast }: Props) {
@@ -42,7 +46,7 @@ export function PresetConfig({ game, controlType, onSaved, showToast }: Props) {
       if (existing) {
         setMoves(existing.moves);
         setSearchDefaults(existing.searchDefaults);
-        setTags(existing.tags?.length ? existing.tags : [...INITIAL_TAGS]);
+        setTags(existing.tags?.length ? withCloseRangeTagOption(existing.tags) : [...INITIAL_TAGS]);
       } else {
         const initial = INITIAL_PRESETS[game.id];
         setMoves(initial?.moves ?? []);

@@ -15,6 +15,7 @@ import { SetplayList } from './components/SetplayList';
 import { SetplayDetail } from './components/SetplayDetail';
 import { DataManager } from './components/DataManager';
 import { SettingsModal } from './components/SettingsModal';
+import { withAutoTagsForMoveName } from './moveTags';
 import {
   ensureCharacterForControlType,
   importOfficialForCharacterControl,
@@ -48,7 +49,7 @@ async function seedMovesForCharacter(game: Game, controlType: ControlType, chara
     startupFrames: null,
     activeStartFrames: null,
     activeFrames: null,
-    tags: [],
+    tags: withAutoTagsForMoveName(p.name, []),
     memo: '',
     enabled: true,
     createdAt: timestamp,
@@ -72,6 +73,27 @@ async function migrateCopyClassicToModern() {
     id: modernId,
     controlTypeId: 'sf6_modern',
     updatedAt: now(),
+  });
+}
+
+async function migrateCloseRangeMoveTags() {
+  const moves = await db.moves.toArray();
+  const updates = moves
+    .map((move) => {
+      const currentTags = move.tags ?? [];
+      const tags = withAutoTagsForMoveName(move.name, currentTags);
+      if (tags.length === currentTags.length) return null;
+      return { id: move.id, tags };
+    })
+    .filter((item): item is { id: string; tags: string[] } => item !== null);
+
+  if (updates.length === 0) return;
+
+  const timestamp = now();
+  await db.transaction('rw', [db.moves], async () => {
+    for (const update of updates) {
+      await db.moves.update(update.id, { tags: update.tags, updatedAt: timestamp });
+    }
   });
 }
 
@@ -102,7 +124,10 @@ export default function App() {
   }, []);
 
   // 起動時マイグレーション（一度だけ実行）
-  useEffect(() => { migrateCopyClassicToModern(); }, []);
+  useEffect(() => {
+    migrateCopyClassicToModern();
+    migrateCloseRangeMoveTags();
+  }, []);
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));

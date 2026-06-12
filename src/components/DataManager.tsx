@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { db } from '../db';
 import type { Character, Move, Preset, Setplay, Starter } from '../types';
 import { genUUID, now } from '../utils';
+import { withAutoTagsForMoveName } from '../moveTags';
 import { APP_VERSION, DB_SCHEMA_VERSION, DATA_FORMAT_VERSION } from '../version';
 import {
   SF6_CHUNLI_CLASSIC_DATA_META,
@@ -59,7 +60,12 @@ export function DataManager({ showToast }: Props) {
 
     await db.transaction('rw', [db.characters, db.moves, db.setplays, db.presets, db.starters], async () => {
       await db.characters.bulkPut(data.characters!);
-      await db.moves.bulkPut(data.moves!);
+      await db.moves.bulkPut(
+        data.moves!.map((move) => ({
+          ...move,
+          tags: withAutoTagsForMoveName(move.name, move.tags ?? []),
+        }))
+      );
       await db.setplays.bulkPut(data.setplays!);
       if (Array.isArray(data.presets) && data.presets.length > 0) {
         await db.presets.bulkPut(data.presets);
@@ -194,7 +200,7 @@ export function DataManager({ showToast }: Props) {
           controlTypeId: meta.controlTypeId,
           characterId: character.id,
           entryType: 'preset',
-          tags: [],
+          tags: withAutoTagsForMoveName(move.name, []),
           createdAt: timestamp,
           updatedAt: timestamp,
           ...move,

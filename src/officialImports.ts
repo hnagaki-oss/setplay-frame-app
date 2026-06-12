@@ -2,6 +2,7 @@ import { db } from './db';
 import type { Character, ControlType, ControlTypeId, Game, GameId, Move } from './types';
 import { INITIAL_CHARACTERS } from './constants';
 import { genUUID, now } from './utils';
+import { withAutoTagsForMoveName } from './moveTags';
 import { fetchSf6OfficialFrameData, fetchSf6OfficialRoster, type Sf6OfficialCharacter } from './sf6OfficialSite';
 
 export type OfficialSeedMove = Omit<
@@ -177,7 +178,7 @@ export async function importOfficialTargetIfChanged(
         controlTypeId: target.meta.controlTypeId,
         characterId: character.id,
         entryType: 'preset',
-        tags: [],
+        tags: withAutoTagsForMoveName(move.name, []),
         createdAt: timestamp,
         updatedAt: timestamp,
         ...move,

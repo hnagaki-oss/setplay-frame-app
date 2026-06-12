@@ -96,7 +96,10 @@ export const CHARACTER_NAME_MIGRATIONS: Record<string, string> = {
 
 // ============================================================
 
+export const CLOSE_RANGE_TAG = '近距離技';
+
 export const INITIAL_TAGS = [
+  CLOSE_RANGE_TAG,
   '安定', '突進技', '特殊効果あり', '位置調整あり',
   '位置ずれ注意', '相手に当たりやすい', '非推奨',
   'ドライブ系', 'REV系', 'ブレーキング', 'フェイント',

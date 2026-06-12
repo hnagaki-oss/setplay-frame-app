@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { db } from '../db';
 import { gameLogoSrc, localCharacterIconCandidates } from '../characterAssets';
 import type { Game, ControlType, ControlTypeId } from '../types';
 
@@ -16,9 +17,22 @@ const CONTROL_TYPE_VISUALS: Record<ControlTypeId, { label: string; className: st
   cotw_smart: { label: 'SMART', className: 'control-type-card-smart' },
 };
 
+type ControlTypeDataSummary = {
+  moveCount: number;
+  lastInputDate: string | null;
+};
+
+function formatDateLabel(value: string | null | undefined): string {
+  if (value === undefined) return '確認中...';
+  if (!value) return '未入力';
+  return value.slice(0, 10).replaceAll('-', '/');
+}
+
 export function ControlTypeSelect({ game, characterName, onSelect, onImportOfficial }: Props) {
   const [importingId, setImportingId] = useState<string | null>(null);
   const [iconIndex, setIconIndex] = useState(0);
+  const [dataRefreshKey, setDataRefreshKey] = useState(0);
+  const [dataSummaries, setDataSummaries] = useState<Partial<Record<ControlTypeId, ControlTypeDataSummary>>>({});
   const characterIconCandidates = localCharacterIconCandidates(game.id, characterName);
   const characterIconSrc = iconIndex < characterIconCandidates.length ? characterIconCandidates[iconIndex] : null;
   const initial = [...characterName][0] ?? '?';
@@ -27,10 +41,52 @@ export function ControlTypeSelect({ game, characterName, onSelect, onImportOffic
     setIconIndex(0);
   }, [game.id, characterName]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDataSummaries() {
+      const entries = await Promise.all(game.controlTypes.map(async (controlType) => {
+        const characters = await db.characters
+          .where('[gameId+controlTypeId]')
+          .equals([game.id, controlType.id])
+          .toArray();
+        const character = characters.find((candidate) => candidate.name === characterName);
+        if (!character) {
+          return [controlType.id, { moveCount: 0, lastInputDate: null }] as const;
+        }
+
+        const moves = await db.moves
+          .where('[gameId+controlTypeId+characterId]')
+          .equals([game.id, controlType.id, character.id])
+          .toArray();
+        const lastInputDate = moves
+          .map((move) => move.updatedAt)
+          .filter(Boolean)
+          .sort()
+          .at(-1)
+          ?.slice(0, 10) ?? null;
+
+        return [controlType.id, { moveCount: moves.length, lastInputDate }] as const;
+      }));
+
+      if (!cancelled) {
+        setDataSummaries(Object.fromEntries(entries));
+      }
+    }
+
+    setDataSummaries({});
+    loadDataSummaries();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dataRefreshKey, game.controlTypes, game.id, characterName]);
+
   const handleImport = async (controlType: ControlType) => {
     setImportingId(controlType.id);
     try {
       await onImportOfficial(controlType);
+      setDataRefreshKey((key) => key + 1);
     } finally {
       setImportingId(null);
     }
@@ -65,6 +121,7 @@ export function ControlTypeSelect({ game, characterName, onSelect, onImportOffic
         <div className="control-select-grid">
           {game.controlTypes.map((ct, index) => {
             const visual = CONTROL_TYPE_VISUALS[ct.id];
+            const dataSummary = dataSummaries[ct.id];
 
             return (
               <div key={ct.id} className={`control-type-card ${visual.className}`}>
@@ -72,6 +129,13 @@ export function ControlTypeSelect({ game, characterName, onSelect, onImportOffic
                   <span className="control-type-number">0{index + 1}</span>
                   <span className="control-type-label">{visual.label}</span>
                   <span className="control-type-name">{ct.name}</span>
+                  <span className="control-type-data">
+                    <span>データ最終入力</span>
+                    <strong>{formatDateLabel(dataSummary?.lastInputDate)}</strong>
+                  </span>
+                  <span className="control-type-count">
+                    {dataSummary ? `技 ${dataSummary.moveCount}件` : '技 --件'}
+                  </span>
                 </button>
                 {game.id === 'sf6' && (
                   <button

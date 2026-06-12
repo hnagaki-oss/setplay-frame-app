@@ -801,7 +801,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 
 .control-type-number,
 .control-type-label,
-.control-type-name {
+.control-type-name,
+.control-type-data,
+.control-type-count {
   position: relative;
   z-index: 1;
 }
@@ -823,6 +825,29 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   font-size: 1.35rem;
   font-weight: 900;
   line-height: 1.25;
+}
+
+.control-type-data {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  color: rgba(255,255,255,0.72);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.control-type-data strong {
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.control-type-count {
+  margin-top: 0.08rem;
+  color: rgba(255,255,255,0.58);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .control-type-card-arcade .control-type-main,

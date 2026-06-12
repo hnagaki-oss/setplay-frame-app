@@ -20,6 +20,27 @@ const DEFAULT_OVERRIDE = (): SearchSessionOverride => ({
   preferredTags: [],
 });
 
+type MeatySelectableMove = Move & {
+  startupFrames: number;
+  activeFrames: number;
+};
+
+const hasMeatyFrameInput = (move: Move | null | undefined): move is MeatySelectableMove =>
+  move?.startupFrames !== null &&
+  move?.startupFrames !== undefined &&
+  move.activeFrames !== null &&
+  move.activeFrames !== undefined;
+
+const MOVE_CATEGORY_SORT_ORDER = new Map(ALL_MOVE_CATEGORIES.map((category, index) => [category, index]));
+
+function compareMovesForOverride(a: Move, b: Move): number {
+  return (
+    (MOVE_CATEGORY_SORT_ORDER.get(a.category) ?? 999) - (MOVE_CATEGORY_SORT_ORDER.get(b.category) ?? 999) ||
+    (a.totalFrames ?? 9999) - (b.totalFrames ?? 9999) ||
+    a.name.localeCompare(b.name, 'ja')
+  );
+}
+
 export function FrameSearch({ character, searchDefaults, showToast, onRegister }: Props) {
   const [moves, setMoves] = useState<Move[]>([]);
   const [starters, setStarters] = useState<Starter[]>([]);
@@ -92,10 +113,21 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
 
   const meatyMove = moves.find((m) => m.id === meatyMoveId);
   const meatyActiveStart = meatyMove?.activeStartFrames ?? meatyMove?.startupFrames ?? null;
+  const meatyMoveOptions = moves.filter(hasMeatyFrameInput);
+  const overrideMoveOptions = [...moves].sort(compareMovesForOverride);
+
+  useEffect(() => {
+    if (!isMeaty || !meatyMoveId) return;
+    const selected = moves.find((m) => m.id === meatyMoveId);
+    if (!hasMeatyFrameInput(selected)) {
+      setMeatyMoveId('');
+      setMeatyActiveIdx(0);
+    }
+  }, [isMeaty, meatyMoveId, moves]);
 
   const computeRequired = (): { value: number | null; error: string | null } => {
     if (curF === null || tgtF === null) return { value: null, error: null };
-    if (isMeaty && meatyMove?.startupFrames && meatyActiveStart && meatyMove.activeFrames) {
+    if (isMeaty && hasMeatyFrameInput(meatyMove) && meatyActiveStart !== null) {
       if (meatyMove.activeFrames < meatyActiveStart) {
         return { value: null, error: '重ね技の最終持続Fが発生Fより小さくなっています。技データを確認してください。' };
       }
@@ -187,7 +219,7 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
   );
 
   const meatyActiveOptions = (() => {
-    if (!meatyMove?.startupFrames || !meatyActiveStart || !meatyMove.activeFrames) return [];
+    if (!hasMeatyFrameInput(meatyMove) || meatyActiveStart === null) return [];
     const activeCount = meatyMove.activeFrames - meatyActiveStart + 1;
     if (activeCount <= 0) return [];
     return Array.from({ length: activeCount }, (_, i) => ({
@@ -299,24 +331,30 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
                   onChange={(e) => { setMeatyMoveId(e.target.value); setMeatyActiveIdx(0); }}
                 >
                   <option value="">-- 選択してください --</option>
-                  {moves.map((m) => (
-                    <option
-                      key={m.id}
-                      value={m.id}
-                      disabled={!m.startupFrames || !m.activeFrames || m.activeFrames < (m.activeStartFrames ?? m.startupFrames)}
-                    >
-                      {m.name}
-                      {(!m.startupFrames || !m.activeFrames)
-                        ? '（発生F/最終持続F未入力）'
-                        : m.activeFrames < (m.activeStartFrames ?? m.startupFrames)
-                        ? '（最終持続Fが発生F未満）'
-                        : ` (発生${m.startupFrames}F 最終段${m.activeStartFrames ?? m.startupFrames}-${m.activeFrames}F)`}
-                    </option>
-                  ))}
+                  {meatyMoveOptions.map((m) => {
+                    const activeStart = m.activeStartFrames ?? m.startupFrames;
+                    const isInvalidActiveRange = m.activeFrames < activeStart;
+                    return (
+                      <option
+                        key={m.id}
+                        value={m.id}
+                        disabled={isInvalidActiveRange}
+                      >
+                        {m.name}
+                        {isInvalidActiveRange
+                          ? '（最終持続Fが発生F未満）'
+                          : ` (発生${m.startupFrames}F 最終段${activeStart}-${m.activeFrames}F)`}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
 
-              {meatyMove && meatyMove.startupFrames && meatyMove.activeFrames ? (
+              {meatyMoveOptions.length === 0 && (
+                <p className="empty-message-sm">発生F・最終持続Fが入力済みの技がありません。</p>
+              )}
+
+              {hasMeatyFrameInput(meatyMove) && meatyActiveStart !== null ? (
                 <>
                   <label className="form-label">
                     重ね位置
@@ -447,13 +485,13 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
               <div className="override-grid">
                 <OverrideMoveList
                   label="除外する技"
-                  moves={moves}
+                  moves={overrideMoveOptions}
                   selected={override.excludedMoveIds}
                   onChange={(ids) => setOverride((p) => ({ ...p, excludedMoveIds: ids }))}
                 />
                 <OverrideMoveList
                   label="優先する技"
-                  moves={moves}
+                  moves={overrideMoveOptions}
                   selected={override.preferredMoveIds}
                   onChange={(ids) => setOverride((p) => ({ ...p, preferredMoveIds: ids }))}
                 />

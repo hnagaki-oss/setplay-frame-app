@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
 import type { Move, MoveCategory, Character } from '../types';
-import { ALL_MOVE_CATEGORIES, MOVE_CATEGORY_NAMES, INITIAL_TAGS } from '../constants';
+import { ALL_MOVE_CATEGORIES, MOVE_CATEGORY_NAMES, INITIAL_TAGS, CLOSE_RANGE_TAG } from '../constants';
 import { genUUID, now } from '../utils';
+import { withAutoTagsForMoveName } from '../moveTags';
 
 interface Props {
   character: Character;
@@ -26,6 +27,10 @@ const DEFAULT_FORM = (): ModalFormData => ({
   memo: '',
   enabled: true,
 });
+
+function withCloseRangeTagOption(tags: string[]): string[] {
+  return tags.includes(CLOSE_RANGE_TAG) ? tags : [CLOSE_RANGE_TAG, ...tags];
+}
 
 // ---- インライン Frame 入力コンポーネント ----
 function FrameInput({
@@ -174,7 +179,7 @@ export function MoveManager({ character, showToast }: Props) {
     ]);
 
     // タグをプリセットから取得
-    if (preset?.tags?.length) setAvailableTags(preset.tags);
+    if (preset?.tags?.length) setAvailableTags(withCloseRangeTagOption(preset.tags));
     else setAvailableTags(INITIAL_TAGS);
 
     const compareByCreatedAt = (a: Move, b: Move) =>
@@ -253,6 +258,8 @@ export function MoveManager({ character, showToast }: Props) {
 
   const handleModalSave = async () => {
     if (!formData.name.trim()) { showToast('技名を入力してください', 'error'); return; }
+    const moveName = formData.name.trim();
+    const moveTags = withAutoTagsForMoveName(moveName, formData.tags);
     if (isAdding) {
       const move: Move = {
         id: genUUID(),
@@ -260,7 +267,8 @@ export function MoveManager({ character, showToast }: Props) {
         controlTypeId: character.controlTypeId,
         characterId: character.id,
         ...formData,
-        name: formData.name.trim(),
+        name: moveName,
+        tags: moveTags,
         memo: formData.memo.trim(),
         entryType: 'added',
         totalFrames: null,
@@ -274,9 +282,9 @@ export function MoveManager({ character, showToast }: Props) {
       showToast(`「${move.name}」を追加しました`, 'success');
       setMoves((prev) => [...prev, move]);
     } else if (detailMove) {
-      const patch = { name: formData.name.trim(), category: formData.category, tags: formData.tags, memo: formData.memo.trim(), enabled: formData.enabled, updatedAt: now() };
+      const patch = { name: moveName, category: formData.category, tags: moveTags, memo: formData.memo.trim(), enabled: formData.enabled, updatedAt: now() };
       await db.moves.update(detailMove.id, patch);
-      showToast(`「${formData.name.trim()}」を更新しました`, 'success');
+      showToast(`「${moveName}」を更新しました`, 'success');
       setMoves((prev) => prev.map((m) => m.id === detailMove.id ? { ...m, ...patch } : m));
     }
     closeModal();
