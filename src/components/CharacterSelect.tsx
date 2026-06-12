@@ -22,11 +22,19 @@ const AVATAR_PALETTE = [
   '#f59e0b', '#ef4444', '#ec4899', '#14b8a6',
   '#6366f1', '#f97316', '#84cc16', '#0ea5e9',
 ];
+const LOCAL_ICON_EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'];
 
 function avatarColor(name: string): string {
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
   return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
+}
+
+function localIconCandidates(gameId: string, name: string): string[] {
+  const encodedName = encodeURIComponent(name);
+  return LOCAL_ICON_EXTENSIONS.map((ext) =>
+    `/local-character-icons/${gameId}/${encodedName}.${ext}`
+  );
 }
 
 // ---- 1枚のキャラカード ----
@@ -39,9 +47,12 @@ function CharacterCard({ char, gameId, onSelect, onEdited, showToast }: {
 }) {
   const [mode, setMode] = useState<'view' | 'edit' | 'del'>('view');
   const [editName, setEditName] = useState('');
+  const [iconIndex, setIconIndex] = useState(0);
 
   const color   = avatarColor(char.name);
   const initial = [...char.name][0] ?? '?';
+  const iconCandidates = localIconCandidates(gameId, char.name);
+  const iconSrc = iconIndex < iconCandidates.length ? iconCandidates[iconIndex] : null;
 
   const handleSaveEdit = async () => {
     const trimmed = editName.trim();
@@ -105,7 +116,17 @@ function CharacterCard({ char, gameId, onSelect, onEdited, showToast }: {
     <div className="char-card">
       <button className="char-card-main" onClick={onSelect} title={char.name}>
         <div className="char-avatar" style={{ backgroundColor: color }}>
-          {initial}
+          {iconSrc ? (
+            <img
+              className="char-avatar-img"
+              src={iconSrc}
+              alt=""
+              draggable={false}
+              onError={() => setIconIndex((current) => current + 1)}
+            />
+          ) : (
+            initial
+          )}
         </div>
         <span className="char-card-name">{char.name}</span>
       </button>

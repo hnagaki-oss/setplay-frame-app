@@ -23,6 +23,7 @@ coverage
 .codex
 .tmp*
 migration-backups/
+public/local-character-icons/
 
 # Editor directories and files
 .vscode/*
