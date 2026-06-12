@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 function localBackupDataPlugin() {
@@ -23,9 +23,35 @@ function localBackupDataPlugin() {
   };
 }
 
+function appStatusPlugin() {
+  const packageJsonPath = path.resolve(process.cwd(), 'package.json');
+
+  function readAppVersion() {
+    try {
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { version?: string };
+      return packageJson.version ?? 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  }
+
+  return {
+    name: 'app-status',
+    configureServer(server: import('vite').ViteDevServer) {
+      server.middlewares.use('/api/status', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({
+          status: 'ok',
+          appVersion: readAppVersion(),
+        }));
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), localBackupDataPlugin()],
+  plugins: [react(), localBackupDataPlugin(), appStatusPlugin()],
   server: {
     proxy: {
       '/official-site': {

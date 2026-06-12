@@ -347,9 +347,10 @@ export default function App() {
   const controlType = fullGame && selectedControlType
     ? fullGame.controlTypes.find((ct) => ct.id === selectedControlType.id) ?? null
     : null;
+  const appThemeClass = fullGame ? `app-${fullGame.id.replace(/_/g, '-')}` : 'app-home';
 
   return (
-    <div className="app">
+    <div className={`app ${appThemeClass}`}>
       <Header
         game={fullGame}
         controlType={controlType}

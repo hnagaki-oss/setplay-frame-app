@@ -95,11 +95,15 @@ export function ControlTypeSelect({ game, characterName, onSelect, onImportOffic
   return (
     <div className="select-view control-select-view" data-game-id={game.id}>
       <div className="control-select-shell">
+        <div className="control-select-heading">
+          <h2 className="select-title control-select-title">操作タイプを選択</h2>
+          <p className="select-subtitle">{game.name} / {characterName}</p>
+        </div>
+
         <div className="control-select-hero">
           <div className="control-select-copy">
             <img className="control-select-game-logo" src={gameLogoSrc(game.id)} alt="" aria-hidden="true" />
             <p className="control-select-game-name">{game.name}</p>
-            <h2 className="select-title control-select-title">操作タイプを選択</h2>
             <p className="control-select-character-name">{characterName}</p>
           </div>
 
