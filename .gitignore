@@ -23,7 +23,7 @@ coverage
 .codex
 .tmp*
 migration-backups/
-public/local-character-icons/
+public/local-character-icons/*/_cache_candidates/
 data/
 
 # Editor directories and files

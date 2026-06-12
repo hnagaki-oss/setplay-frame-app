@@ -121,6 +121,12 @@ function CharacterCard({ char, gameId, onSelect, onEdited, showToast }: {
   const initial = [...char.name][0] ?? '?';
   const iconCandidates = localIconCandidates(gameId, char.name);
   const iconSrc = iconIndex < iconCandidates.length ? iconCandidates[iconIndex] : null;
+  const avatarStyle = gameId === 'sf6' && iconSrc ? undefined : { backgroundColor: color };
+  const cardClassName = [
+    'char-card',
+    iconSrc ? 'char-card-has-icon' : '',
+    gameId === 'sf6' && iconSrc ? 'char-card-sf6' : '',
+  ].filter(Boolean).join(' ');
 
   const handleSaveEdit = async () => {
     const trimmed = editName.trim();
@@ -181,9 +187,9 @@ function CharacterCard({ char, gameId, onSelect, onEdited, showToast }: {
   }
 
   return (
-    <div className="char-card">
+    <div className={cardClassName}>
       <button className="char-card-main" onClick={onSelect} title={char.name}>
-        <div className="char-avatar" style={{ backgroundColor: color }}>
+        <div className="char-avatar" style={avatarStyle}>
           {iconSrc ? (
             <img
               className="char-avatar-img"
@@ -302,7 +308,7 @@ export function CharacterSelect({ game, onSelect, onBulkImportOfficial, showToas
   if (loading) return <div className="loading">読み込み中...</div>;
 
   return (
-    <div className="char-select-view">
+    <div className="char-select-view" data-game-id={game.id}>
       <h2 className="select-title">キャラクターを選択</h2>
       <p className="select-subtitle">{game.name}</p>
 

@@ -485,6 +485,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   margin-bottom: 1.25rem;
 }
 
+.char-select-view[data-game-id="sf6"] .char-grid {
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 0.65rem;
+}
+
 .char-card {
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid var(--border);
@@ -552,6 +557,69 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   object-position: center;
 }
 
+.char-card-has-icon .char-avatar-img {
+  object-fit: cover;
+}
+
+.char-card-sf6 {
+  background: #150627;
+  border-color: rgba(236, 72, 153, 0.28);
+}
+
+.char-card-sf6:hover {
+  border-color: rgba(236, 72, 153, 0.75);
+  box-shadow: 0 10px 26px rgba(88, 28, 135, 0.28);
+}
+
+.char-card-sf6 .char-card-main {
+  align-items: stretch;
+  background: linear-gradient(180deg, #241044 0%, #12051e 100%);
+}
+
+.char-card-sf6 .char-card-main:hover {
+  background: linear-gradient(180deg, #2b1255 0%, #17072a 100%);
+}
+
+.char-card-sf6 .char-avatar {
+  aspect-ratio: 575 / 625;
+  border-bottom: 0;
+  background-color: #21083d;
+  background-image: linear-gradient(135deg, #3b116c 0%, #12051e 100%);
+  clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
+}
+
+.char-card-sf6 .char-avatar-img {
+  transform: scale(1.015);
+}
+
+.char-card-sf6 .char-card-name {
+  min-height: 2.1rem;
+  padding: 0.38rem 0.4rem 0.34rem;
+  color: #f8fafc;
+  background: #0c0615;
+  border-top: 1px solid rgba(236, 72, 153, 0.22);
+  font-size: 0.72rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+}
+
+.char-card-sf6 .char-card-actions {
+  border-top-color: rgba(236, 72, 153, 0.2);
+  background: rgba(12, 6, 21, 0.96);
+}
+
+.char-card-sf6 .char-action-btn {
+  color: rgba(248, 250, 252, 0.72);
+}
+
+.char-card-sf6 .char-action-btn:hover {
+  background: rgba(236, 72, 153, 0.16);
+  color: #ffffff;
+}
+
+.char-card-sf6 .char-action-btn + .char-action-btn {
+  border-left-color: rgba(236, 72, 153, 0.2);
+}
+
 .char-card-name {
   min-height: 2.6rem;
   display: flex;
@@ -598,6 +666,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   .char-grid {
     grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
     gap: 0.6rem;
+  }
+  .char-select-view[data-game-id="sf6"] .char-grid {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   }
 }
 
