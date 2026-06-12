@@ -1387,6 +1387,15 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 .results-section { }
 .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
 .results-title { font-size: 1.1rem; }
+.results-help {
+  color: var(--text-muted);
+  background: var(--primary-light);
+  border: 1px solid rgba(37,99,235,0.14);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  margin: -0.35rem 0 0.85rem;
+  padding: 0.55rem 0.75rem;
+}
 .badge-dot { display: inline-block; width: 8px; height: 8px; background: var(--warning); border-radius: 50%; margin-left: 4px; }
 
 .override-panel {

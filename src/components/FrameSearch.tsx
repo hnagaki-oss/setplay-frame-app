@@ -32,6 +32,12 @@ const hasMeatyFrameInput = (move: Move | null | undefined): move is MeatySelecta
   move.activeFrames !== null &&
   move.activeFrames !== undefined;
 
+function getMeatyFinalActiveIndex(move: Move | null | undefined): number {
+  if (!hasMeatyFrameInput(move)) return 0;
+  const activeStart = move.activeStartFrames ?? move.startupFrames;
+  return Math.max(0, move.activeFrames - activeStart);
+}
+
 function sortMovesForOverride(moves: Move[]): Move[] {
   return moves
     .map((move, index) => ({ move, index }))
@@ -127,8 +133,14 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
     if (!hasMeatyFrameInput(selected)) {
       setMeatyMoveId('');
       setMeatyActiveIdx(0);
+      return;
     }
-  }, [isMeaty, meatyMoveId, moves]);
+
+    const finalActiveIndex = getMeatyFinalActiveIndex(selected);
+    if (meatyActiveIdx > finalActiveIndex) {
+      setMeatyActiveIdx(finalActiveIndex);
+    }
+  }, [isMeaty, meatyActiveIdx, meatyMoveId, moves]);
 
   const computeRequired = (): { value: number | null; error: string | null } => {
     if (curF === null || tgtF === null) return { value: null, error: null };
@@ -333,7 +345,12 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
                 <select
                   className="select"
                   value={meatyMoveId}
-                  onChange={(e) => { setMeatyMoveId(e.target.value); setMeatyActiveIdx(0); }}
+                  onChange={(e) => {
+                    const nextMoveId = e.target.value;
+                    const nextMove = moves.find((m) => m.id === nextMoveId);
+                    setMeatyMoveId(nextMoveId);
+                    setMeatyActiveIdx(getMeatyFinalActiveIndex(nextMove));
+                  }}
                 >
                   <option value="">-- 選択してください --</option>
                   {meatyMoveOptions.map((m) => {
@@ -474,6 +491,11 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
               {hasOverride && <span className="badge-dot" />}
             </button>
           </div>
+          {results.length > 0 && (
+            <p className="results-help">
+              登録したいセットプレイ候補にチェックを入れて、最下段の「選択した候補をセットプレイ登録」をクリックしてください。
+            </p>
+          )}
 
           {/* 一時条件パネル */}
           {showOverride && (
