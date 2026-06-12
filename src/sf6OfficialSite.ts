@@ -1,4 +1,5 @@
 import type { ControlTypeId } from './types';
+import { formatLocalDateKey } from './utils';
 import {
   type OfficialFrameMoveSource,
   type ParsedOfficialFrameMove,
@@ -168,7 +169,7 @@ export async function fetchSf6OfficialFrameData(
     slug: character.slug,
     controlTypeId,
     sourceUrl: `${SF6_OFFICIAL_ORIGIN}${character.framePath}`,
-    dataCheckedAt: new Date().toISOString().slice(0, 10),
+    dataCheckedAt: formatLocalDateKey(new Date()),
     rawMoves,
     moves: rawMoves
       .map((move) => parseOfficialFrameMove(move))

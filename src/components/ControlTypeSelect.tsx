@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '../db';
 import { gameLogoSrc, localCharacterIconCandidates } from '../characterAssets';
+import { formatLocalDateKey } from '../utils';
 import type { Game, ControlType, ControlTypeId } from '../types';
 
 interface Props {
@@ -25,7 +26,7 @@ type ControlTypeDataSummary = {
 function formatDateLabel(value: string | null | undefined): string {
   if (value === undefined) return '確認中...';
   if (!value) return '未入力';
-  return value.slice(0, 10).replaceAll('-', '/');
+  return formatLocalDateKey(value).replaceAll('-', '/');
 }
 
 export function ControlTypeSelect({ game, characterName, onSelect, onImportOfficial }: Props) {
@@ -64,7 +65,7 @@ export function ControlTypeSelect({ game, characterName, onSelect, onImportOffic
           .filter(Boolean)
           .sort()
           .at(-1)
-          ?.slice(0, 10) ?? null;
+          ?? null;
 
         return [controlType.id, { moveCount: moves.length, lastInputDate }] as const;
       }));

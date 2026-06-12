@@ -179,10 +179,16 @@ export async function importOfficialTargetIfChanged(
   currentMoves.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name, 'ja'));
 
   if (!hasOfficialMoveDiff(currentMoves, target.moves)) {
+    const timestamp = now();
+    await db.transaction('rw', [db.characters, db.moves], async () => {
+      await db.characters.update(character.id, { updatedAt: timestamp });
+      await db.moves.where('characterId').equals(character.id).modify({ updatedAt: timestamp });
+    });
     return { status: 'unchanged', importedCount: 0, label: target.label };
   }
 
-  await db.transaction('rw', [db.moves], async () => {
+  await db.transaction('rw', [db.characters, db.moves], async () => {
+    await db.characters.update(character.id, { updatedAt: now() });
     await db.moves.where('characterId').equals(character.id).delete();
     const baseTime = Date.now();
     const moves: Move[] = target.moves.map((move, index) => {
