@@ -1,35 +1,12 @@
 import { useRef, useState } from 'react';
 import { db } from '../db';
 import type { Character, Move, Preset, Setplay, Starter } from '../types';
-import { genUUID, now } from '../utils';
 import { withAutoTagsForMoveName } from '../moveTags';
 import { APP_VERSION, DB_SCHEMA_VERSION, DATA_FORMAT_VERSION } from '../version';
-import {
-  SF6_CHUNLI_CLASSIC_DATA_META,
-  SF6_CHUNLI_CLASSIC_MOVES,
-} from '../sf6ChunliClassicMoves';
-import {
-  SF6_CHUNLI_MODERN_DATA_META,
-  SF6_CHUNLI_MODERN_MOVES,
-} from '../sf6ChunliModernMoves';
 
 interface Props {
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
-
-type OfficialSeedMeta = {
-  gameId: 'sf6';
-  controlTypeId: 'sf6_classic' | 'sf6_modern';
-  characterName: string;
-  sourceName: string;
-  dataCheckedAt: string;
-};
-
-type OfficialImportTarget = {
-  label: string;
-  meta: OfficialSeedMeta;
-  moves: Array<Omit<Move, 'id' | 'gameId' | 'controlTypeId' | 'characterId' | 'entryType' | 'tags' | 'createdAt' | 'updatedAt'>>;
-};
 
 type BackupData = {
   formatVersion?: number;
@@ -50,7 +27,6 @@ type ImportSummary = {
 export function DataManager({ showToast }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [resetConfirm, setResetConfirm] = useState(false);
-  const [officialImportTarget, setOfficialImportTarget] = useState<OfficialImportTarget | null>(null);
 
   const importBackupData = async (data: BackupData): Promise<ImportSummary | null> => {
     if (!Array.isArray(data.characters) || !Array.isArray(data.moves) || !Array.isArray(data.setplays)) {
@@ -164,76 +140,6 @@ export function DataManager({ showToast }: Props) {
     showToast('全データを初期化しました', 'info');
   };
 
-  // ---- 公式データ試験投入 ----
-  const handleImportOfficialMoves = async (target: OfficialImportTarget) => {
-    const { label, meta } = target;
-    let importedCount = 0;
-
-    await db.transaction('rw', [db.characters, db.moves], async () => {
-      const existingCharacters = await db.characters
-        .where('[gameId+controlTypeId]')
-        .equals([meta.gameId, meta.controlTypeId])
-        .toArray();
-
-      let character = existingCharacters.find((c) => c.name === meta.characterName);
-      if (!character) {
-        character = {
-          id: genUUID(),
-          gameId: meta.gameId,
-          controlTypeId: meta.controlTypeId,
-          name: meta.characterName,
-          entryType: 'preset',
-          createdAt: now(),
-          updatedAt: now(),
-        } satisfies Character;
-        await db.characters.add(character);
-      }
-
-      await db.moves.where('characterId').equals(character.id).delete();
-
-      const baseTime = Date.now();
-      const moves: Move[] = target.moves.map((move, index) => {
-        const timestamp = new Date(baseTime + index).toISOString();
-        return {
-          id: genUUID(),
-          gameId: meta.gameId,
-          controlTypeId: meta.controlTypeId,
-          characterId: character.id,
-          entryType: 'preset',
-          displayOrder: index,
-          tags: withAutoTagsForMoveName(move.name, []),
-          createdAt: timestamp,
-          updatedAt: timestamp,
-          ...move,
-          memo: [
-            `データ最終確認日: ${meta.dataCheckedAt}`,
-            `参照元: ${meta.sourceName}`,
-            move.memo,
-          ].join('\n'),
-        };
-      });
-
-      await db.moves.bulkAdd(moves);
-      importedCount = moves.length;
-    });
-
-    setOfficialImportTarget(null);
-    showToast(`${label}公式データを投入しました（${importedCount}件）`, 'success');
-  };
-
-  const officialImportTargets: OfficialImportTarget[] = [
-    {
-      label: '春麗クラシック',
-      meta: SF6_CHUNLI_CLASSIC_DATA_META,
-      moves: SF6_CHUNLI_CLASSIC_MOVES,
-    },
-    {
-      label: '春麗モダン',
-      meta: SF6_CHUNLI_MODERN_DATA_META,
-      moves: SF6_CHUNLI_MODERN_MOVES,
-    },
-  ];
-
   return (
     <div className="data-manager">
       <h2 className="section-title">データ管理</h2>
@@ -292,31 +198,6 @@ export function DataManager({ showToast }: Props) {
           style={{ display: 'none' }}
           onChange={handleImport}
         />
-      </div>
-
-      {/* ---- 公式データ試験投入 ---- */}
-      <div className="data-action-card">
-        <h3>🧪 公式データ試験投入</h3>
-        <p>
-          {SF6_CHUNLI_CLASSIC_DATA_META.sourceName} を春麗へ投入します。<br />
-          データ最終確認日：<code>{SF6_CHUNLI_CLASSIC_DATA_META.dataCheckedAt}</code><br />
-          既存の対象操作タイプの春麗技データは差し替えられます。
-        </p>
-        {officialImportTarget ? (
-          <div className="delete-confirm-row">
-            <span>{officialImportTarget.label}の技データを差し替えますか？</span>
-            <button className="btn btn-primary" onClick={() => handleImportOfficialMoves(officialImportTarget)}>投入する</button>
-            <button className="btn btn-ghost" onClick={() => setOfficialImportTarget(null)}>キャンセル</button>
-          </div>
-        ) : (
-          <div className="delete-confirm-row">
-            {officialImportTargets.map((target) => (
-              <button key={target.meta.controlTypeId} className="btn btn-outline" onClick={() => setOfficialImportTarget(target)}>
-                {target.label}公式データを投入
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ---- 全初期化 ---- */}
