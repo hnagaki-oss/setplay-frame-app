@@ -22,6 +22,7 @@ coverage
 .claude
 .codex
 .tmp*
+migration-backups/
 
 # Editor directories and files
 .vscode/*
