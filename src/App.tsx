@@ -493,8 +493,8 @@ export default function App() {
                 <div className="tab-bar">
                   {([
                     { key: 'search',   label: '🔍 フレーム検索' },
-                    { key: 'moves',    label: '📋 技データ管理' },
                     { key: 'setplays', label: '📁 セットプレイ一覧' },
+                    { key: 'moves',    label: '📋 技データ登録' },
                     { key: 'data',     label: '💾 データ管理' },
                   ] as { key: MainTab; label: string }[]).map((tab) => (
                     <button

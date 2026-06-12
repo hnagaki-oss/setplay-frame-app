@@ -419,7 +419,7 @@ export function MoveManager({ character, showToast }: Props) {
 
   return (
     <div className="move-manager">
-      <h2 className="section-title">技データ管理 — {character.name}</h2>
+      <h2 className="section-title">技データ登録 — {character.name}</h2>
 
       {/* 詳細モーダル（技名・タグ・メモ・カテゴリ） */}
       {showModal && (
