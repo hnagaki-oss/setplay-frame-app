@@ -1532,6 +1532,45 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 .candidate-card-header { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0.4rem; }
 .candidate-num { font-size: 1rem; font-weight: 700; color: var(--text-muted); }
 .candidate-moves { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; font-weight: 600; flex: 1; }
+.candidate-recipe-step { display: inline-flex; align-items: center; gap: 0.25rem; }
+.candidate-recipe-move {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.12rem;
+  font: inherit;
+  font-weight: inherit;
+  padding: 0.12rem 0.22rem;
+  position: relative;
+  cursor: grab;
+}
+.candidate-recipe-move:hover,
+.candidate-recipe-move:focus-visible {
+  background: var(--primary-light);
+  border-color: rgba(37,99,235,0.2);
+  outline: none;
+}
+.candidate-recipe-move:active { cursor: grabbing; }
+.candidate-recipe-move-dragging {
+  opacity: 0.45;
+  background: var(--primary-light);
+}
+.candidate-recipe-move-drop-before::before,
+.candidate-recipe-move-drop-after::after {
+  content: '';
+  position: absolute;
+  top: 0.12rem;
+  bottom: 0.12rem;
+  width: 2px;
+  background: var(--primary);
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+}
+.candidate-recipe-move-drop-before::before { left: -0.22rem; }
+.candidate-recipe-move-drop-after::after { right: -0.22rem; }
 .cand-move-name { font-weight: 700; }
 .cand-move-frames { font-size: 0.8rem; color: var(--text-muted); }
 .cand-wait { color: var(--warning); }

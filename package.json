@@ -1,7 +1,7 @@
 {
   "name": "setplay-frame-app",
   "private": true,
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Local browser app for managing fighting game setplay and frame-kill routes.",
   "type": "module",
   "scripts": {
