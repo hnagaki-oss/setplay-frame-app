@@ -231,16 +231,20 @@ export function parseSf6OfficialFrameMoveSources(
     const name = extractMoveName(skillCell);
     if (!name) continue;
 
+    const officialCategory = normalizeOfficialCategory(currentCategory);
+    const commandText = extractCommandText(skillCell, controlTypeId);
+    if (shouldSkipClassicCommandlessOfficialMove(controlTypeId, officialCategory, commandText)) continue;
+
     const active = extractActiveTexts(cells[2]);
     moves.push({
       name,
-      officialCategory: normalizeOfficialCategory(currentCategory),
+      officialCategory,
       startupText: normalizeCellText(cells[1].innerText),
       activeText: active.activeText,
       activeDetailText: active.activeDetailText,
       recoveryText: normalizeCellText(cells[3].innerText),
-      inputText: extractCommandText(skillCell, controlTypeId),
-      commandText: extractCommandText(skillCell, controlTypeId),
+      inputText: commandText,
+      commandText,
       note: buildSourceNote(cells),
     });
   }
@@ -266,6 +270,8 @@ function parseSf6OfficialFrameMoveSourcesFromEntries(
       const commandText = controlTypeId === 'sf6_modern'
         ? normalizeModernCommandNotation(rawCommand)
         : normalizeOfficialCommandNotation(rawCommand);
+      if (shouldSkipClassicCommandlessOfficialMove(controlTypeId, officialCategory, commandText)) return null;
+
       const displayName = controlTypeId === 'sf6_modern' && commandText
         ? buildModernMoveDisplayName(name, commandText)
         : undefined;
@@ -285,6 +291,14 @@ function parseSf6OfficialFrameMoveSourcesFromEntries(
       };
     })
     .filter((move): move is OfficialFrameMoveSource => move !== null);
+}
+
+function shouldSkipClassicCommandlessOfficialMove(
+  controlTypeId: ControlTypeId,
+  officialCategory: string,
+  commandText: string
+): boolean {
+  return controlTypeId === 'sf6_classic' && officialCategory !== '通常技' && !commandText.trim();
 }
 
 export function parseSf6OfficialMoveCommandMap(

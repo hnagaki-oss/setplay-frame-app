@@ -18,6 +18,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { withAutoTagsForMoveName } from './moveTags';
 import {
   ensureCharacterForControlType,
+  cleanupSf6ClassicCommandlessOfficialMoves,
   importOfficialForCharacterControl,
   importOfficialTargetIfChanged,
   previewAvailableOfficialTargetsForGame,
@@ -128,6 +129,7 @@ export default function App() {
   useEffect(() => {
     migrateCopyClassicToModern();
     migrateCloseRangeMoveTags();
+    cleanupSf6ClassicCommandlessOfficialMoves();
   }, []);
 
   const removeToast = useCallback((id: string) => {

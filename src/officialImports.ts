@@ -56,6 +56,21 @@ export type OfficialBulkImportPreview = {
 
 export const OFFICIAL_IMPORT_TARGETS: OfficialImportTarget[] = [];
 
+export async function cleanupSf6ClassicCommandlessOfficialMoves(): Promise<number> {
+  const moves = await db.moves
+    .where('[gameId+controlTypeId]')
+    .equals(['sf6', 'sf6_classic'])
+    .toArray();
+  const staleMoveIds = moves
+    .filter(isSf6ClassicCommandlessOfficialMove)
+    .map((move) => move.id);
+
+  if (staleMoveIds.length === 0) return 0;
+
+  await db.moves.bulkDelete(staleMoveIds);
+  return staleMoveIds.length;
+}
+
 export function getOfficialImportTarget(
   gameId: GameId,
   controlTypeId: ControlTypeId,
@@ -398,6 +413,18 @@ function hasOfficialMoveDiff(currentMoves: Move[], seedMoves: OfficialSeedMove[]
       !currentMove.memo.includes(seedMove.memo)
     );
   });
+}
+
+function isSf6ClassicCommandlessOfficialMove(move: Move): boolean {
+  return (
+    move.entryType === 'preset' &&
+    move.gameId === 'sf6' &&
+    move.controlTypeId === 'sf6_classic' &&
+    move.category !== 'normal' &&
+    move.memo.includes('参照元: STREET FIGHTER 6 公式') &&
+    move.memo.includes('公式カテゴリ:') &&
+    !move.memo.includes('公式コマンド:')
+  );
 }
 
 async function resolveOfficialImportTarget(
