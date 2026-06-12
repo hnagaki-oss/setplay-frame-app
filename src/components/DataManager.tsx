@@ -34,34 +34,50 @@ export function DataManager({ showToast }: Props) {
       return null;
     }
 
+    const characters = data.characters;
+    const moves = data.moves.map((move) => ({
+      ...move,
+      tags: withAutoTagsForMoveName(move.name, move.tags ?? []),
+    }));
+    const setplays = data.setplays;
+    const presets = Array.isArray(data.presets) ? data.presets : [];
+    const starters = Array.isArray(data.starters) ? data.starters : [];
+
     await db.transaction('rw', [db.characters, db.moves, db.setplays, db.presets, db.starters], async () => {
-      await db.characters.bulkPut(data.characters!);
-      await db.moves.bulkPut(
-        data.moves!.map((move) => ({
-          ...move,
-          tags: withAutoTagsForMoveName(move.name, move.tags ?? []),
-        }))
-      );
-      await db.setplays.bulkPut(data.setplays!);
-      if (Array.isArray(data.presets) && data.presets.length > 0) {
-        await db.presets.bulkPut(data.presets);
+      await db.characters.clear();
+      await db.moves.clear();
+      await db.setplays.clear();
+      await db.presets.clear();
+      await db.starters.clear();
+
+      if (characters.length > 0) {
+        await db.characters.bulkPut(characters);
       }
-      if (Array.isArray(data.starters) && data.starters.length > 0) {
-        await db.starters.bulkPut(data.starters);
+      if (moves.length > 0) {
+        await db.moves.bulkPut(moves);
+      }
+      if (setplays.length > 0) {
+        await db.setplays.bulkPut(setplays);
+      }
+      if (presets.length > 0) {
+        await db.presets.bulkPut(presets);
+      }
+      if (starters.length > 0) {
+        await db.starters.bulkPut(starters);
       }
     });
 
     return {
       formatVersion: data.formatVersion ?? 1,
-      characters: data.characters.length,
-      moves: data.moves.length,
-      setplays: data.setplays.length,
+      characters: characters.length,
+      moves: moves.length,
+      setplays: setplays.length,
     };
   };
 
   const showImportSummary = (summary: ImportSummary) => {
     showToast(
-      `インポート完了 (フォーマットv${summary.formatVersion})：` +
+      `復元完了 (フォーマットv${summary.formatVersion})：` +
       `キャラ${summary.characters}件、技${summary.moves}件、` +
       `セットプレイ${summary.setplays}件`,
       'success'
@@ -180,7 +196,7 @@ export function DataManager({ showToast }: Props) {
       <div className="data-action-card">
         <h3>📥 JSONインポート</h3>
         <p>
-          エクスポートしたJSONファイルを読み込みます。既存データとマージされます（同じIDは上書き）。<br />
+          エクスポートしたJSONファイルを読み込み、現在の全データをバックアップ内容に置き換えます。<br />
           旧フォーマット（v1）のファイルも読み込めます。
         </p>
         <button className="btn btn-outline" onClick={() => fileRef.current?.click()}>
