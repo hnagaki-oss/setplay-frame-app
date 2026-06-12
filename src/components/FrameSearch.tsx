@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
-import type { Move, MoveCategory, Character, SearchCondition, SearchResult, SearchSessionOverride, SearchDefaults, Starter } from '../types';
+import type { Move, MoveCategory, Character, SearchCondition, SearchResult, SearchSessionOverride, SearchDefaults, Starter, PresetMove } from '../types';
 import { ALL_MOVE_CATEGORIES, MOVE_CATEGORY_NAMES, INITIAL_TAGS } from '../constants';
 import { search } from '../search';
 
@@ -33,12 +33,33 @@ const hasMeatyFrameInput = (move: Move | null | undefined): move is MeatySelecta
 
 const MOVE_CATEGORY_SORT_ORDER = new Map(ALL_MOVE_CATEGORIES.map((category, index) => [category, index]));
 
-function compareMovesForOverride(a: Move, b: Move): number {
-  return (
-    (MOVE_CATEGORY_SORT_ORDER.get(a.category) ?? 999) - (MOVE_CATEGORY_SORT_ORDER.get(b.category) ?? 999) ||
-    (a.totalFrames ?? 9999) - (b.totalFrames ?? 9999) ||
-    a.name.localeCompare(b.name, 'ja')
-  );
+function compareByRegisteredOrder(a: Move, b: Move): number {
+  return a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name, 'ja');
+}
+
+function sortMovesByRegisteredOrder(moves: Move[], presetMoves: PresetMove[] = []): Move[] {
+  const sorted = [...moves];
+  if (presetMoves.length === 0) return sorted.sort(compareByRegisteredOrder);
+
+  return sorted.sort((a, b) => {
+    const ia = presetMoves.findIndex((p) => p.name === a.name && p.category === a.category);
+    const ib = presetMoves.findIndex((p) => p.name === b.name && p.category === b.category);
+    if (ia === -1 && ib === -1) return compareByRegisteredOrder(a, b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+}
+
+function sortMovesForOverride(moves: Move[]): Move[] {
+  return moves
+    .map((move, index) => ({ move, index }))
+    .sort((a, b) =>
+      (MOVE_CATEGORY_SORT_ORDER.get(a.move.category) ?? 999) -
+      (MOVE_CATEGORY_SORT_ORDER.get(b.move.category) ?? 999) ||
+      a.index - b.index
+    )
+    .map(({ move }) => move);
 }
 
 export function FrameSearch({ character, searchDefaults, showToast, onRegister }: Props) {
@@ -64,11 +85,14 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
   const [deleteStarterConfirmId, setDeleteStarterConfirmId] = useState<string | null>(null);
 
   const loadMoves = useCallback(async () => {
-    const ms = await db.moves
-      .where('[gameId+controlTypeId+characterId]')
-      .equals([character.gameId, character.controlTypeId, character.id])
-      .toArray();
-    setMoves(ms);
+    const [ms, preset] = await Promise.all([
+      db.moves
+        .where('[gameId+controlTypeId+characterId]')
+        .equals([character.gameId, character.controlTypeId, character.id])
+        .toArray(),
+      db.presets.get(`${character.gameId}_${character.controlTypeId}`),
+    ]);
+    setMoves(sortMovesByRegisteredOrder(ms, preset?.moves));
   }, [character.gameId, character.controlTypeId, character.id]);
 
   const loadStarters = useCallback(async () => {
@@ -114,7 +138,7 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
   const meatyMove = moves.find((m) => m.id === meatyMoveId);
   const meatyActiveStart = meatyMove?.activeStartFrames ?? meatyMove?.startupFrames ?? null;
   const meatyMoveOptions = moves.filter(hasMeatyFrameInput);
-  const overrideMoveOptions = [...moves].sort(compareMovesForOverride);
+  const overrideMoveOptions = sortMovesForOverride(moves);
 
   useEffect(() => {
     if (!isMeaty || !meatyMoveId) return;
