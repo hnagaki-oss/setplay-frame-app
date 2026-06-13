@@ -38,6 +38,8 @@ function getMeatyFinalActiveIndex(move: Move | null | undefined): number {
   return Math.max(0, move.activeFrames - activeStart);
 }
 
+const MEATY_WAKEUP_OFFSET_FRAMES = 1;
+
 function sortMovesForOverride(moves: Move[]): Move[] {
   return moves
     .map((move, index) => ({ move, index }))
@@ -155,7 +157,7 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
         return { value: null, error: '重ね技の最終持続Fが発生Fより小さくなっています。技データを確認してください。' };
       }
       if (meatyTargetF === null) return { value: null, error: null };
-      const req = curF - meatyTargetF;
+      const req = curF - meatyTargetF + MEATY_WAKEUP_OFFSET_FRAMES;
       return req < 0
         ? { value: null, error: '目標Fが現在の有利Fを上回っています。' }
         : req === 0
@@ -400,7 +402,7 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
                   </label>
                   {requiredF !== null && (
                     <p className="meaty-calc">
-                      目標F：{meatyTargetF}F / 必要消費F：{curF} − {meatyTargetF} = <strong>{requiredF}F</strong>
+                      目標F：{meatyTargetF}F / 必要消費F：{curF} − {meatyTargetF} + {MEATY_WAKEUP_OFFSET_FRAMES} = <strong>{requiredF}F</strong>
                     </p>
                   )}
                 </>
