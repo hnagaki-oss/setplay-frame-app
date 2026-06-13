@@ -126,6 +126,12 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
   const meatyActiveStart = meatyMove?.activeStartFrames ?? meatyMove?.startupFrames ?? null;
   const meatyMoveOptions = moves.filter(hasMeatyFrameInput);
   const overrideMoveOptions = sortMovesForOverride(moves);
+  const meatyTargetF =
+    isMeaty && hasMeatyFrameInput(meatyMove) && meatyActiveStart !== null
+      ? meatyActiveStart + meatyActiveIdx
+      : null;
+  const effectiveTargetF = isMeaty ? meatyTargetF : tgtF;
+  const targetInputValue = isMeaty ? (meatyTargetF === null ? '' : String(meatyTargetF)) : targetF;
 
   useEffect(() => {
     if (!isMeaty || !meatyMoveId) return;
@@ -143,21 +149,21 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
   }, [isMeaty, meatyActiveIdx, meatyMoveId, moves]);
 
   const computeRequired = (): { value: number | null; error: string | null } => {
-    if (curF === null || tgtF === null) return { value: null, error: null };
+    if (curF === null) return { value: null, error: null };
     if (isMeaty && hasMeatyFrameInput(meatyMove) && meatyActiveStart !== null) {
       if (meatyMove.activeFrames < meatyActiveStart) {
         return { value: null, error: '重ね技の最終持続Fが発生Fより小さくなっています。技データを確認してください。' };
       }
-      const activeIdx = meatyActiveIdx;
-      const reach = meatyActiveStart + activeIdx;
-      const req = curF - reach;
+      if (meatyTargetF === null) return { value: null, error: null };
+      const req = curF - meatyTargetF;
       return req < 0
         ? { value: null, error: '目標Fが現在の有利Fを上回っています。' }
         : req === 0
         ? { value: 0, error: null }
         : { value: req, error: null };
     }
-    const req = curF - tgtF;
+    if (effectiveTargetF === null) return { value: null, error: null };
+    const req = curF - effectiveTargetF;
     if (req < 0) return { value: null, error: '目標Fが現在の有利Fを上回っています。技空振りによるフレーム消費ではこの状況は作れません。' };
     if (req === 0) return { value: 0, error: null };
     return { value: req, error: null };
@@ -166,8 +172,8 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
   const { value: requiredF, error: inputError } = computeRequired();
 
   const handleSearch = useCallback(() => {
-    if (curF === null || tgtF === null) {
-      showToast('有利Fと目標Fを入力してください', 'error');
+    if (curF === null || effectiveTargetF === null) {
+      showToast(isMeaty ? '有利Fと重ね技を選択してください' : '有利Fと目標Fを入力してください', 'error');
       return;
     }
     if (requiredF === null) {
@@ -181,7 +187,7 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
 
     const condition: SearchCondition = {
       currentAdvantageFrames: curF,
-      targetFrames: tgtF,
+      targetFrames: effectiveTargetF,
       requiredConsumeFrames: requiredF,
       isMeatyMode: isMeaty,
       meatyMoveId: isMeaty ? meatyMoveId : undefined,
@@ -204,7 +210,7 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
     } else {
       showToast(`${found.length}件の候補が見つかりました`, 'success');
     }
-  }, [curF, tgtF, requiredF, inputError, isMeaty, meatyMoveId, meatyActiveIdx, maxMoveCount, allowRepeat, allowWait, maxWait, enabledCats, moves, override, showToast]);
+  }, [curF, effectiveTargetF, requiredF, inputError, isMeaty, meatyMoveId, meatyActiveIdx, maxMoveCount, allowRepeat, allowWait, maxWait, enabledCats, moves, override, showToast]);
 
   const handleReSearch = () => {
     if (!lastCondition) return;
@@ -312,9 +318,11 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
             <input
               type="number"
               className="input frame-input"
-              value={targetF}
+              value={targetInputValue}
               onChange={(e) => setTargetF(e.target.value)}
-              placeholder="例: 42"
+              placeholder={isMeaty ? '重ね技から自動算出' : '例: 42'}
+              disabled={isMeaty}
+              title={isMeaty ? '重ねモード中は、選択した重ね技と重ね位置から自動算出されます' : undefined}
             />
           </label>
         </div>
@@ -392,7 +400,7 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
                   </label>
                   {requiredF !== null && (
                     <p className="meaty-calc">
-                      必要消費F：{curF} − ({meatyActiveStart} + {meatyActiveIdx}) = <strong>{requiredF}F</strong>
+                      目標F：{meatyTargetF}F / 必要消費F：{curF} − {meatyTargetF} = <strong>{requiredF}F</strong>
                     </p>
                   )}
                 </>
@@ -472,7 +480,7 @@ export function FrameSearch({ character, searchDefaults, showToast, onRegister }
         <button
           className="btn btn-primary btn-lg"
           onClick={handleSearch}
-          disabled={curF === null || tgtF === null || requiredF === null || requiredF === 0}
+          disabled={curF === null || effectiveTargetF === null || requiredF === null || requiredF === 0}
         >
           🔍 検索する
         </button>
