@@ -1188,7 +1188,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 /* テーブルヘッダー */
 .move-table-header {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 72px 92px 82px 90px auto;
+  grid-template-columns: 28px minmax(0, 1fr) 72px 104px 104px 90px auto;
   align-items: center;
   padding: 0.35rem 1rem;
   background: var(--bg);
@@ -1201,6 +1201,64 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 .col-drag { width: 28px; }
 .col-name {}
 .col-frame { text-align: center; }
+.col-frame-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+.header-help {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: inherit;
+  opacity: 0.78;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: help;
+  user-select: none;
+}
+.header-help:hover,
+.header-help:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+.header-help::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.55rem);
+  width: max-content;
+  max-width: 260px;
+  transform: translateX(-50%);
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 12, 24, 0.96);
+  color: #f8fafc;
+  box-shadow: var(--shadow-md);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 20;
+}
+.header-help:hover::after,
+.header-help:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
 .col-frame-total { text-align: center; color: var(--primary); }
 .col-frame-note { font-weight: normal; font-size: 0.7rem; }
 .col-actions { min-width: 140px; }
@@ -1208,7 +1266,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 /* 技行（インライン編集） */
 .move-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 72px 92px 82px 90px auto;
+  grid-template-columns: 28px minmax(0, 1fr) 72px 104px 104px 90px auto;
   align-items: center;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
@@ -1328,14 +1386,20 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
     -webkit-overflow-scrolling: touch;
   }
   .move-table-header {
-    min-width: 760px;
-    grid-template-columns: 24px minmax(180px, 1fr) 54px 72px 64px 70px auto;
+    min-width: 820px;
+    grid-template-columns: 24px minmax(180px, 1fr) 54px 92px 92px 70px auto;
     padding: 0.35rem 0.5rem;
   }
   .move-row {
-    min-width: 760px;
-    grid-template-columns: 24px minmax(180px, 1fr) 54px 72px 64px 70px auto;
+    min-width: 820px;
+    grid-template-columns: 24px minmax(180px, 1fr) 54px 92px 92px 70px auto;
     padding: 0.5rem 0.5rem;
+  }
+  .header-help::after {
+    left: auto;
+    right: 0;
+    transform: none;
+    max-width: 220px;
   }
   .move-drag-handle { width: 22px; }
   .move-tags-inline {

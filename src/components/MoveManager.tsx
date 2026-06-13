@@ -46,14 +46,30 @@ function withCloseRangeTagOption(tags: string[]): string[] {
   return tags.includes(CLOSE_RANGE_TAG) ? tags : [CLOSE_RANGE_TAG, ...tags];
 }
 
+function HeaderHelp({ label }: { label: string }) {
+  return (
+    <span
+      className="header-help"
+      tabIndex={0}
+      role="img"
+      aria-label={label}
+      data-tooltip={label}
+    >
+      ?
+    </span>
+  );
+}
+
 // ---- インライン Frame 入力コンポーネント ----
 function FrameInput({
   value,
   placeholder,
+  title,
   onCommit,
 }: {
   value: number | null;
   placeholder?: string;
+  title?: string;
   onCommit: (val: number | null) => void;
 }) {
   const [local, setLocal] = useState(value?.toString() ?? '');
@@ -77,6 +93,7 @@ function FrameInput({
       value={local}
       min={1}
       placeholder={placeholder ?? '--'}
+      title={title}
       onChange={(e) => setLocal(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
@@ -155,22 +172,26 @@ function MoveRow({
       {/* フレーム入力 */}
       <FrameInput
         value={move.startupFrames}
-        placeholder="--"
+        placeholder="未入力"
+        title="技の発生フレーム"
         onCommit={(v) => onFrameUpdate(move.id, { startupFrames: v })}
       />
       <FrameInput
         value={move.activeStartFrames ?? null}
-        placeholder="発生F"
+        placeholder="発生Fと同じ"
+        title="最後に出る攻撃判定の開始F。空欄の場合は発生Fと同じ値として扱います。"
         onCommit={(v) => onFrameUpdate(move.id, { activeStartFrames: v })}
       />
       <FrameInput
         value={move.activeFrames}
-        placeholder="--"
+        placeholder="未入力"
+        title="最後に出る攻撃判定が終わるF"
         onCommit={(v) => onFrameUpdate(move.id, { activeFrames: v })}
       />
       <FrameInput
         value={move.totalFrames}
         placeholder="必須"
+        title="検索で使う全体フレーム"
         onCommit={(v) => onFrameUpdate(move.id, { totalFrames: v })}
       />
 
@@ -501,8 +522,14 @@ export function MoveManager({ character, showToast }: Props) {
                     <span className="col-drag"></span>
                     <span className="col-name">技名</span>
                     <span className="col-frame">発生F</span>
-                    <span className="col-frame">最終段開始F</span>
-                    <span className="col-frame">最終持続F</span>
+                    <span className="col-frame col-frame-help">
+                      最終段開始F
+                      <HeaderHelp label="多段技の場合、最後に出る攻撃判定の開始Fを入力します。単発技は発生Fと同じ値でOKです。" />
+                    </span>
+                    <span className="col-frame col-frame-help">
+                      最終段終了F
+                      <HeaderHelp label="最後の攻撃判定が終わるFを入力します。例：持続が 9-11, 19-20 の技なら開始19、終了20。" />
+                    </span>
                     <span className="col-frame col-frame-total">全体F <span className="col-frame-note">（検索用）</span></span>
                     <span className="col-actions"></span>
                   </div>
